@@ -167,6 +167,16 @@ func (userRepo *UserRepository) UpdateUserRole(userId, newRoleId int) error {
 }
 
 func (userRepo *UserRepository) UpdateUserPassword(id int, newPassword string) error {
+	_, err := userRepo.Pool.Exec(context.Background(),
+		"UPDATE users SET password = $1 WHERE id = $2",
+		newPassword,
+		id,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update a password: %w", err)
+	}
+
 	return nil
 }
 
