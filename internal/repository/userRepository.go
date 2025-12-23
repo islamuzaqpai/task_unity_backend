@@ -10,7 +10,7 @@ import (
 type UserRepositoryInterface interface {
 	GetUserById(id int) (*models.User, error)
 	GetUserByEmail(email string) (*models.User, error)
-	GetAllUsers() ([]*models.User, error)
+	GetAllUsers() ([]models.User, error)
 	AddUser(user *models.User) (*models.User, error)
 	UpdateUserProfile(id int, newUser models.User) (*models.User, error)
 	UpdateUserRole(userId, roleId int) error
