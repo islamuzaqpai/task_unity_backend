@@ -12,6 +12,7 @@ type RoleRepositoryInterface interface {
 	GetRoleById(id int) (*models.Role, error)
 	GetAllRoles() ([]models.Role, error)
 	UpdateRole(id int, newRole models.Role) (*models.Role, error)
+	DeleteRole(id int) error
 }
 
 type RoleRepository struct {
