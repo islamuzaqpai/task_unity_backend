@@ -104,10 +104,10 @@ func (userRepo *UserRepository) GetUserByEmail(email string) (*models.User, erro
 func (userRepo *UserRepository) AddUser(user *models.User) (*models.User, error) {
 	row := userRepo.Pool.QueryRow(context.Background(),
 		"INSERT INTO users (full_name, email, password, department_id) VALUES ($1, $2, $3, $4) RETURNING id, full_name, email, department_id",
-		&user.FullName,
-		&user.Email,
-		&user.Password,
-		&user.DepartmentId,
+		user.FullName,
+		user.Email,
+		user.Password,
+		user.DepartmentId,
 	)
 
 	err := row.Scan(
