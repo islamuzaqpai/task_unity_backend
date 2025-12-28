@@ -51,7 +51,7 @@ func (taskRepo *TaskRepository) AddTask(task *models.Task) (*models.Task, error)
 
 func (taskRepo *TaskRepository) GetTaskById(id int) (*models.Task, error) {
 	row := taskRepo.Pool.QueryRow(context.Background(),
-		"SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at, deleted_at FROM tasks WHERE id = $1",
+		"SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at FROM tasks WHERE id = $1",
 		id,
 	)
 

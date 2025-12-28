@@ -46,3 +46,70 @@ func (attendanceRepo *AttendanceRepository) AddAttendance(attendance *models.Att
 
 	return attendance, nil
 }
+
+func (attendanceRepo *AttendanceRepository) GetAttendanceById(id int) (*models.Attendance, error) {
+	row := attendanceRepo.Pool.QueryRow(context.Background(),
+		"SELECT id, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE id = $1",
+		id,
+	)
+
+	var attendance models.Attendance
+	err := row.Scan(
+		&attendance.Id,
+		&attendance.UserId,
+		&attendance.DepartmentId,
+		&attendance.Status,
+		&attendance.Comment,
+		&attendance.MarkedBy,
+		&attendance.CreatedAt,
+		&attendance.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan: %w", err)
+	}
+
+	return &attendance, nil
+}
+
+func (attendanceRepo *AttendanceRepository) GetAllAttendance() ([]models.Attendance, error) {
+	rows, err := attendanceRepo.Pool.Query(context.Background(),
+		"SELECT id, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE deleted_at is null")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to select all attendances: %w", err)
+	}
+
+	var attendances []models.Attendance
+	for rows.Next() {
+		var attendance models.Attendance
+
+		err = rows.Scan(
+			&attendance.Id,
+			&attendance.UserId,
+			&attendance.DepartmentId,
+			&attendance.Status,
+			&attendance.Comment,
+			&attendance.MarkedBy,
+			&attendance.CreatedAt,
+			&attendance.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan: %w", err)
+		}
+
+		attendances = append(attendances, attendance)
+	}
+
+	defer rows.Close()
+
+	return attendances, nil
+}
+
+func (attendanceRepo *AttendanceRepository) UpdateAttendance(id int, newAttendance models.Attendance) (*models.Attendance, error) {
+	return nil, nil
+}
+func (attendanceRepo *AttendanceRepository) DeleteAttendance(id int) error {
+	return nil
+}
