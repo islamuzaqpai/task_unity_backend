@@ -108,8 +108,43 @@ func (attendanceRepo *AttendanceRepository) GetAllAttendance() ([]models.Attenda
 }
 
 func (attendanceRepo *AttendanceRepository) UpdateAttendance(id int, newAttendance models.Attendance) (*models.Attendance, error) {
-	return nil, nil
+	row := attendanceRepo.Pool.QueryRow(context.Background(),
+		"UPDATE attendance SET user_id = $1, department_id = $2, status = $3, comment = $4, marked_by = $5  WHERE id = $6 AND attendance.deleted_at IS NULL RETURNING id, user_id, department_id, status, comment, marked_by, created_at, updated_at",
+		newAttendance.UserId,
+		newAttendance.DepartmentId,
+		newAttendance.Status,
+		newAttendance.Comment,
+		newAttendance.MarkedBy,
+		id,
+	)
+
+	var attendance models.Attendance
+	err := row.Scan(
+		&attendance.Id,
+		&attendance.UserId,
+		&attendance.DepartmentId,
+		&attendance.Status,
+		&attendance.Comment,
+		&attendance.MarkedBy,
+		&attendance.CreatedAt,
+		&attendance.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan: %w", err)
+	}
+
+	return &attendance, nil
+
 }
 func (attendanceRepo *AttendanceRepository) DeleteAttendance(id int) error {
+	_, err := attendanceRepo.Pool.Exec(context.Background(),
+		"DELETE FROM attendance WHERE id = $1",
+		id)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete an attendance: %w", err)
+	}
+
 	return nil
 }
