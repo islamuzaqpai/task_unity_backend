@@ -1,7 +1,10 @@
 package repository
 
 import (
+	"context"
 	"enactus/internal/models"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -15,4 +18,44 @@ type CommentRepositoryInterface interface {
 
 type CommentRepository struct {
 	Pool *pgxpool.Pool
+}
+
+func (commentRepo *CommentRepository) AddComment(comment *models.TaskComment) (*models.TaskComment, error) {
+	row := commentRepo.Pool.QueryRow(context.Background(),
+		"INSERT INTO tasks_comments (comment, task_id, user_id) VALUES ($1, $2, $3) RETURNING id, comment, task_id, user_id, created_at, updated_at",
+		comment.Comment,
+		comment.TaskId,
+		comment.UserId,
+	)
+
+	err := row.Scan(
+		&comment.Id,
+		&comment.Comment,
+		&comment.TaskId,
+		&comment.UserId,
+		&comment.CreatedAt,
+		&comment.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan: %w", err)
+	}
+
+	return comment, nil
+}
+
+func (commentRepo *CommentRepository) GetCommentById(id int) (*models.TaskComment, error) {
+	return nil, nil
+}
+
+func (commentRepo *CommentRepository) GetAllComments() ([]models.TaskComment, error) {
+	return nil, nil
+}
+
+func (commentRepo *CommentRepository) UpdateComment(id int, newComment models.TaskComment) (*models.TaskComment, error) {
+	return nil, nil
+}
+
+func (commentRepo *CommentRepository) DeleteComment(id int) error {
+	return nil
 }
