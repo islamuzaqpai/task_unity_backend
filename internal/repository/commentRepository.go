@@ -135,5 +135,14 @@ func (commentRepo *CommentRepository) UpdateComment(id int, newComment models.Ta
 }
 
 func (commentRepo *CommentRepository) DeleteComment(id int) error {
+	_, err := commentRepo.Pool.Exec(context.Background(),
+		"DELETE FROM tasks_comments WHERE id = $1",
+		id,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete a comment: %w", err)
+	}
+
 	return nil
 }
