@@ -109,7 +109,29 @@ func (commentRepo *CommentRepository) GetAllComments() ([]models.TaskComment, er
 }
 
 func (commentRepo *CommentRepository) UpdateComment(id int, newComment models.TaskComment) (*models.TaskComment, error) {
-	return nil, nil
+	row := commentRepo.Pool.QueryRow(context.Background(),
+		"UPDATE tasks_comments SET comment = $1, task_id = $2, user_id = $3 WHERE id = $4 AND deleted_at IS NULL RETURNING id, comment, task_id, user_id, created_at, updated_at",
+		newComment.Comment,
+		newComment.UserId,
+		newComment.TaskId,
+		id,
+	)
+
+	var comment models.TaskComment
+	err := row.Scan(
+		&comment.Id,
+		&comment.Comment,
+		&comment.TaskId,
+		&comment.UserId,
+		&comment.CreatedAt,
+		&comment.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan: %w", err)
+	}
+
+	return &comment, nil
 }
 
 func (commentRepo *CommentRepository) DeleteComment(id int) error {

@@ -2,6 +2,8 @@ package app
 
 import (
 	"enactus/internal/database"
+	"enactus/internal/models"
+	"enactus/internal/repository"
 	"fmt"
 	"log"
 )
@@ -15,4 +17,19 @@ func Run() {
 	defer pool.Close()
 
 	fmt.Println("Success", pool)
+
+	commRepo := repository.CommentRepository{Pool: pool}
+
+	newComm := models.TaskComment{
+		Comment: "updated",
+		TaskId:  2,
+		UserId:  2,
+	}
+
+	updated, err := commRepo.UpdateComment(3, newComm)
+	if err != nil {
+		log.Fatalf("fail: %v", err)
+	}
+
+	fmt.Println(updated)
 }
