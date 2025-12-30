@@ -4,12 +4,14 @@ import (
 	"context"
 	"enactus/internal/models"
 	"fmt"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserRepositoryInterface interface {
 	GetUserById(id int) (*models.User, error)
 	GetUserByEmail(email string) (*models.User, error)
+	EmailExists(email string) (bool, error)
 	GetAllUsers() ([]models.User, error)
 	AddUser(user *models.User) (*models.User, error)
 	UpdateUserProfile(id int, newUser models.User) (*models.User, error)
@@ -99,6 +101,23 @@ func (userRepo *UserRepository) GetUserByEmail(email string) (*models.User, erro
 	}
 
 	return &user, nil
+}
+
+func (userRepo *UserRepository) EmailExists(email string) (bool, error) {
+	row := userRepo.Pool.QueryRow(context.Background(),
+		"SELECT EXISTS (SELECT 1 FROM users WHERE email = $1)",
+		email,
+	)
+
+	var exists bool
+	err := row.Scan(
+		&exists,
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to scan: %w", err)
+	}
+
+	return exists, nil
 }
 
 func (userRepo *UserRepository) AddUser(user *models.User) (*models.User, error) {
