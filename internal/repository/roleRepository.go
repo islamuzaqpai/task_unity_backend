@@ -4,23 +4,24 @@ import (
 	"context"
 	"enactus/internal/models"
 	"fmt"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type RoleRepositoryInterface interface {
-	AddRole(role models.Role) (*models.Role, error)
-	GetRoleById(id int) (*models.Role, error)
-	GetAllRoles() ([]models.Role, error)
-	UpdateRole(id int, newRole models.Role) (*models.Role, error)
-	DeleteRole(id int) error
+	AddRole(ctx context.Context, role models.Role) (*models.Role, error)
+	GetRoleById(ctx context.Context, id int) (*models.Role, error)
+	GetAllRoles(ctx context.Context) ([]models.Role, error)
+	UpdateRole(ctx context.Context, id int, newRole models.Role) (*models.Role, error)
+	DeleteRole(ctx context.Context, id int) error
 }
 
 type RoleRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (roleRepo *RoleRepository) AddRole(role models.Role) (*models.Role, error) {
-	row := roleRepo.Pool.QueryRow(context.Background(),
+func (roleRepo *RoleRepository) AddRole(ctx context.Context, role models.Role) (*models.Role, error) {
+	row := roleRepo.Pool.QueryRow(ctx,
 		"INSERT INTO roles (name, department_id) VALUES ($1, $2) RETURNING id, name, department_id",
 		role.Name,
 		role.DepartmentId,
@@ -39,8 +40,8 @@ func (roleRepo *RoleRepository) AddRole(role models.Role) (*models.Role, error) 
 	return &role, nil
 }
 
-func (roleRepo *RoleRepository) GetRoleById(id int) (*models.Role, error) {
-	row := roleRepo.Pool.QueryRow(context.Background(),
+func (roleRepo *RoleRepository) GetRoleById(ctx context.Context, id int) (*models.Role, error) {
+	row := roleRepo.Pool.QueryRow(ctx,
 		"SELECT id, name, department_id FROM roles WHERE id = $1",
 		id,
 	)
@@ -60,8 +61,8 @@ func (roleRepo *RoleRepository) GetRoleById(id int) (*models.Role, error) {
 	return &role, nil
 }
 
-func (roleRepo *RoleRepository) GetAllRoles() ([]models.Role, error) {
-	rows, err := roleRepo.Pool.Query(context.Background(),
+func (roleRepo *RoleRepository) GetAllRoles(ctx context.Context) ([]models.Role, error) {
+	rows, err := roleRepo.Pool.Query(ctx,
 		"SELECT id, name, department_id FROM roles")
 
 	if err != nil {
@@ -91,8 +92,8 @@ func (roleRepo *RoleRepository) GetAllRoles() ([]models.Role, error) {
 	return roles, nil
 }
 
-func (roleRepo *RoleRepository) UpdateRole(id int, newRole models.Role) (*models.Role, error) {
-	row := roleRepo.Pool.QueryRow(context.Background(),
+func (roleRepo *RoleRepository) UpdateRole(ctx context.Context, id int, newRole models.Role) (*models.Role, error) {
+	row := roleRepo.Pool.QueryRow(ctx,
 		"UPDATE roles SET name = $1, department_id = $2 WHERE id = $3 RETURNING id, name, department_id",
 		newRole.Name,
 		newRole.DepartmentId,
@@ -114,8 +115,8 @@ func (roleRepo *RoleRepository) UpdateRole(id int, newRole models.Role) (*models
 	return &role, nil
 }
 
-func (roleRepo *RoleRepository) DeleteRole(id int) error {
-	_, err := roleRepo.Pool.Exec(context.Background(),
+func (roleRepo *RoleRepository) DeleteRole(ctx context.Context, id int) error {
+	_, err := roleRepo.Pool.Exec(ctx,
 		"DELETE FROM roles WHERE id = $1",
 		id,
 	)
