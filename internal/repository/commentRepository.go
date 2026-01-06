@@ -9,19 +9,19 @@ import (
 )
 
 type CommentRepositoryInterface interface {
-	AddComment(comment *models.TaskComment) (*models.TaskComment, error)
-	GetCommentById(id int) (*models.TaskComment, error)
-	GetAllComments() ([]models.TaskComment, error)
-	UpdateComment(id int, newComment models.TaskComment) (*models.TaskComment, error)
-	DeleteComment(id int) error
+	AddComment(ctx context.Context, comment *models.TaskComment) (*models.TaskComment, error)
+	GetCommentById(ctx context.Context, id int) (*models.TaskComment, error)
+	GetAllComments(ctx context.Context) ([]models.TaskComment, error)
+	UpdateComment(ctx context.Context, id int, newComment models.TaskComment) (*models.TaskComment, error)
+	DeleteComment(ctx context.Context, id int) error
 }
 
 type CommentRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (commentRepo *CommentRepository) AddComment(comment *models.TaskComment) (*models.TaskComment, error) {
-	row := commentRepo.Pool.QueryRow(context.Background(),
+func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *models.TaskComment) (*models.TaskComment, error) {
+	row := commentRepo.Pool.QueryRow(ctx,
 		"INSERT INTO tasks_comments (comment, task_id, user_id) VALUES ($1, $2, $3) RETURNING id, comment, task_id, user_id, created_at, updated_at",
 		comment.Comment,
 		comment.TaskId,
@@ -44,8 +44,8 @@ func (commentRepo *CommentRepository) AddComment(comment *models.TaskComment) (*
 	return comment, nil
 }
 
-func (commentRepo *CommentRepository) GetCommentById(id int) (*models.TaskComment, error) {
-	row := commentRepo.Pool.QueryRow(context.Background(),
+func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int) (*models.TaskComment, error) {
+	row := commentRepo.Pool.QueryRow(ctx,
 		"SELECT id, comment, task_id, user_id, created_at, updated_at, deleted_at FROM tasks_comments WHERE id = $1",
 		id,
 	)
@@ -68,8 +68,8 @@ func (commentRepo *CommentRepository) GetCommentById(id int) (*models.TaskCommen
 	return &comment, nil
 }
 
-func (commentRepo *CommentRepository) GetAllComments() ([]models.TaskComment, error) {
-	rows, err := commentRepo.Pool.Query(context.Background(),
+func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]models.TaskComment, error) {
+	rows, err := commentRepo.Pool.Query(ctx,
 		"SELECT id, comment, task_id, user_id, created_at, updated_at FROM tasks_comments WHERE deleted_at IS NULL",
 	)
 
@@ -108,8 +108,8 @@ func (commentRepo *CommentRepository) GetAllComments() ([]models.TaskComment, er
 	return comments, nil
 }
 
-func (commentRepo *CommentRepository) UpdateComment(id int, newComment models.TaskComment) (*models.TaskComment, error) {
-	row := commentRepo.Pool.QueryRow(context.Background(),
+func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, newComment models.TaskComment) (*models.TaskComment, error) {
+	row := commentRepo.Pool.QueryRow(ctx,
 		"UPDATE tasks_comments SET comment = $1, task_id = $2, user_id = $3 WHERE id = $4 AND deleted_at IS NULL RETURNING id, comment, task_id, user_id, created_at, updated_at",
 		newComment.Comment,
 		newComment.UserId,
@@ -134,8 +134,8 @@ func (commentRepo *CommentRepository) UpdateComment(id int, newComment models.Ta
 	return &comment, nil
 }
 
-func (commentRepo *CommentRepository) DeleteComment(id int) error {
-	_, err := commentRepo.Pool.Exec(context.Background(),
+func (commentRepo *CommentRepository) DeleteComment(ctx context.Context, id int) error {
+	_, err := commentRepo.Pool.Exec(ctx,
 		"DELETE FROM tasks_comments WHERE id = $1",
 		id,
 	)
