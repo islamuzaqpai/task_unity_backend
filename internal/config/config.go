@@ -6,8 +6,8 @@ import (
 )
 
 type Config struct {
-	DB DB
-	//JWTsecret string
+	DB        DB
+	JWTSecret string
 }
 
 type DB struct {
@@ -27,9 +27,10 @@ func LoadFromEnv() (*Config, error) {
 			Port:     os.Getenv("DB_PORT"),
 			DBName:   os.Getenv("DB_DATABASE"),
 		},
+		JWTSecret: os.Getenv("JWT_SECRET"),
 	}
 
-	if cfg.DB.Host == "" || cfg.DB.User == "" || cfg.DB.Password == "" || cfg.DB.Port == "" || cfg.DB.DBName == "" {
+	if cfg.DB.Host == "" || cfg.DB.User == "" || cfg.DB.Password == "" || cfg.DB.Port == "" || cfg.DB.DBName == "" || cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("missing required env variable")
 	}
 
