@@ -9,10 +9,10 @@ import (
 )
 
 type TaskRepositoryInterface interface {
-	AddTask(ctx context.Context, task *models.Task) (*models.Task, error)
+	AddTask(ctx context.Context, task *models.Task) error
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
-	UpdateTask(ctx context.Context, id int, newTask models.Task) (*models.Task, error)
+	UpdateTask(ctx context.Context, id int, newTask models.Task) error
 	DeleteTask(ctx context.Context, id int) error
 }
 
@@ -20,7 +20,7 @@ type TaskRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) (*models.Task, error) {
+func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) error {
 
 	row := taskRepo.Pool.QueryRow(ctx,
 		"INSERT INTO tasks (title, description, deadline, department_id, creator_id, assignee_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, title, description, deadline, department_id, creator_id, assignee_id, status",
@@ -44,15 +44,15 @@ func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) 
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to add an user: %w", err)
+		return fmt.Errorf("failed to add a task: %w", err)
 	}
 
-	return task, nil
+	return nil
 }
 
 func (taskRepo *TaskRepository) GetTaskById(ctx context.Context, id int) (*models.Task, error) {
 	row := taskRepo.Pool.QueryRow(ctx,
-		"SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at FROM tasks WHERE id = $1",
+		"SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at FROM tasks WHERE id = $1 AND deleted_at IS NULL ",
 		id,
 	)
 
@@ -69,7 +69,6 @@ func (taskRepo *TaskRepository) GetTaskById(ctx context.Context, id int) (*model
 		&task.Status,
 		&task.CreatedAt,
 		&task.UpdatedAt,
-		&task.DeletedAt,
 	)
 
 	if err != nil {
@@ -86,6 +85,8 @@ func (taskRepo *TaskRepository) GetAllTasks(ctx context.Context) ([]models.Task,
 	if err != nil {
 		return nil, fmt.Errorf("failed to select all tasks: %w", err)
 	}
+
+	defer rows.Close()
 
 	var tasks []models.Task
 
@@ -113,14 +114,17 @@ func (taskRepo *TaskRepository) GetAllTasks(ctx context.Context) ([]models.Task,
 		tasks = append(tasks, task)
 	}
 
-	defer rows.Close()
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
 
 	return tasks, nil
 }
 
-func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, newTask models.Task) (*models.Task, error) {
+func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, newTask models.Task) error {
 	row := taskRepo.Pool.QueryRow(ctx,
-		"UPDATE tasks SET title = $1, description = $2, deadline = $3, assignee_id = $4, status = $5 WHERE id = $6 AND tasks.deleted_at IS NULL RETURNING id, title, description, deadline, creator_id, assignee_id, status, created_at, updated_at",
+		"UPDATE tasks SET title = $1, description = $2, deadline = $3, assignee_id = $4, status = $5, updated_at = now() WHERE id = $6 AND deleted_at IS NULL RETURNING id",
 		newTask.Title,
 		newTask.Description,
 		newTask.Deadline,
@@ -129,29 +133,21 @@ func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, newTask 
 		id,
 	)
 
-	var task models.Task
+	var returnedId int
 	err := row.Scan(
-		&task.Id,
-		&task.Title,
-		&task.Description,
-		&task.Deadline,
-		&task.CreatorId,
-		&task.AssigneeId,
-		&task.Status,
-		&task.CreatedAt,
-		&task.UpdatedAt,
+		&returnedId,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return &task, nil
+	return nil
 }
 
 func (taskRepo *TaskRepository) DeleteTask(ctx context.Context, id int) error {
 	_, err := taskRepo.Pool.Exec(ctx,
-		"DELETE FROM tasks WHERE id = $1",
+		"UPDATE tasks SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
 		id)
 
 	if err != nil {
