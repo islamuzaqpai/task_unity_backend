@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+	"enactus/internal/auth"
 	"enactus/internal/models"
 	"enactus/internal/repository"
 	"enactus/internal/utils"
@@ -9,25 +11,23 @@ import (
 )
 
 type UserServiceInterface interface {
-	Register(username, email, password string) (*models.User, error)
-	Login(email, password string) (*models.User, error)
+	Register(ctx context.Context, input models.RegisterInput) (*models.User, error)
+	Login(ctx context.Context, email, password string) (string, error)
 }
 
 type UserService struct {
-	UserRepo *repository.UserRepository
+	UserRepo  *repository.UserRepository
+	JwtSecret *auth.JWTSecret
 }
 
-type RegisterInput struct {
-	FullName     string
-	Email        string
-	Password     string
-	DepartmentId *int
-}
-
-func (userS *UserService) Register(input RegisterInput) (*models.User, error) {
-	checkEmail, err := userS.UserRepo.EmailExists(input.Email)
-	if err != nil || checkEmail != false {
+func (userS *UserService) Register(ctx context.Context, input models.RegisterInput) (*models.User, error) {
+	checkEmail, err := userS.UserRepo.EmailExists(ctx, input.Email)
+	if err != nil {
 		return nil, fmt.Errorf("email already exist")
+	}
+
+	if checkEmail {
+		return nil, fmt.Errorf("email already exists")
 	}
 
 	if utf8.RuneCountInString(input.Password) < 8 {
@@ -45,10 +45,34 @@ func (userS *UserService) Register(input RegisterInput) (*models.User, error) {
 	user.Password = hashedPassword
 	user.DepartmentId = input.DepartmentId
 
-	added, err := userS.UserRepo.AddUser(&user)
+	err = userS.UserRepo.AddUser(ctx, &user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add an user: %w", err)
 	}
 
-	return added, nil
+	user.Password = ""
+	return &user, nil
+}
+
+func (userS *UserService) Login(ctx context.Context, email, password string) (string, error) {
+	user, err := userS.UserRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return "", fmt.Errorf("failed to find user with this email: %w", err)
+	}
+
+	isValid, err := utils.ValidatePassword(password, user.Password)
+	if err != nil {
+		return "", fmt.Errorf("failed to validate a password: %w", err)
+	}
+
+	if !isValid {
+		return "", fmt.Errorf("invalid password: %w", err)
+	}
+
+	tokenStr, err := userS.JwtSecret.GenerateToken(user)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate a token: %w", err)
+	}
+
+	return tokenStr, nil
 }
