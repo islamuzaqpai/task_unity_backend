@@ -204,7 +204,7 @@ func (userRepo *UserRepository) UpdateUserPassword(ctx context.Context, id int, 
 
 func (userRepo *UserRepository) DeleteUser(ctx context.Context, id int) error {
 	_, err := userRepo.Pool.Exec(ctx,
-		"UPDATE users SET deleted_at = now() WHERE id = $1",
+		"UPDATE users SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
