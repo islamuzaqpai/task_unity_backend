@@ -9,10 +9,10 @@ import (
 )
 
 type CommentRepositoryInterface interface {
-	AddComment(ctx context.Context, comment *models.TaskComment) (*models.TaskComment, error)
+	AddComment(ctx context.Context, comment *models.TaskComment) error
 	GetCommentById(ctx context.Context, id int) (*models.TaskComment, error)
 	GetAllComments(ctx context.Context) ([]models.TaskComment, error)
-	UpdateComment(ctx context.Context, id int, newComment models.TaskComment) (*models.TaskComment, error)
+	UpdateComment(ctx context.Context, id int, newComment models.TaskComment) error
 	DeleteComment(ctx context.Context, id int) error
 }
 
@@ -20,7 +20,7 @@ type CommentRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *models.TaskComment) (*models.TaskComment, error) {
+func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *models.TaskComment) error {
 	row := commentRepo.Pool.QueryRow(ctx,
 		"INSERT INTO tasks_comments (comment, task_id, user_id) VALUES ($1, $2, $3) RETURNING id, comment, task_id, user_id, created_at, updated_at",
 		comment.Comment,
@@ -38,15 +38,15 @@ func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *m
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return comment, nil
+	return nil
 }
 
 func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int) (*models.TaskComment, error) {
 	row := commentRepo.Pool.QueryRow(ctx,
-		"SELECT id, comment, task_id, user_id, created_at, updated_at, deleted_at FROM tasks_comments WHERE id = $1",
+		"SELECT id, comment, task_id, user_id, created_at, updated_at, deleted_at FROM tasks_comments WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
@@ -76,6 +76,7 @@ func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]mod
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all comments: %w", err)
 	}
+	defer rows.Close()
 
 	var comments []models.TaskComment
 
@@ -100,43 +101,36 @@ func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]mod
 
 	err = rows.Err()
 	if err != nil {
-		return nil, fmt.Errorf("failed to iteration: %w", err)
+		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
-
-	defer rows.Close()
 
 	return comments, nil
 }
 
-func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, newComment models.TaskComment) (*models.TaskComment, error) {
+func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, newComment models.TaskComment) error {
 	row := commentRepo.Pool.QueryRow(ctx,
-		"UPDATE tasks_comments SET comment = $1, task_id = $2, user_id = $3 WHERE id = $4 AND deleted_at IS NULL RETURNING id, comment, task_id, user_id, created_at, updated_at",
+		"UPDATE tasks_comments SET comment = $1, task_id = $2, user_id = $3, updated_at = now() WHERE id = $4 AND deleted_at IS NULL RETURNING id",
 		newComment.Comment,
-		newComment.UserId,
 		newComment.TaskId,
+		newComment.UserId,
 		id,
 	)
 
-	var comment models.TaskComment
+	var returnedId int
 	err := row.Scan(
-		&comment.Id,
-		&comment.Comment,
-		&comment.TaskId,
-		&comment.UserId,
-		&comment.CreatedAt,
-		&comment.UpdatedAt,
+		&returnedId,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return &comment, nil
+	return nil
 }
 
 func (commentRepo *CommentRepository) DeleteComment(ctx context.Context, id int) error {
 	_, err := commentRepo.Pool.Exec(ctx,
-		"DELETE FROM tasks_comments WHERE id = $1",
+		"UPDATE tasks_comments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
