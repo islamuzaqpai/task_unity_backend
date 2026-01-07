@@ -9,10 +9,10 @@ import (
 )
 
 type AttendanceRepositoryInterface interface {
-	AddAttendance(ctx context.Context, attendance *models.Attendance) (*models.Attendance, error)
+	AddAttendance(ctx context.Context, attendance *models.Attendance) error
 	GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error)
 	GetAllAttendance(ctx context.Context) ([]models.Attendance, error)
-	UpdateAttendance(ctx context.Context, id int, newAttendance models.Attendance) (*models.Attendance, error)
+	UpdateAttendance(ctx context.Context, id int, newAttendance models.Attendance) error
 	DeleteAttendance(ctx context.Context, id int) error
 }
 
@@ -20,7 +20,7 @@ type AttendanceRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, attendance *models.Attendance) (*models.Attendance, error) {
+func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, attendance *models.Attendance) error {
 	row := attendanceRepo.Pool.QueryRow(ctx,
 		"INSERT INTO attendance (user_id, department_id, status, comment, marked_by) VALUES ($1, $2, $3, $4, $5) RETURNING id, user_id, department_id, status, comment, marked_by, created_at, updated_at",
 		attendance.UserId,
@@ -42,15 +42,15 @@ func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, a
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return attendance, nil
+	return nil
 }
 
 func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error) {
 	row := attendanceRepo.Pool.QueryRow(ctx,
-		"SELECT id, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE id = $1",
+		"SELECT id, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
@@ -80,6 +80,7 @@ func (attendanceRepo *AttendanceRepository) GetAllAttendance(ctx context.Context
 	if err != nil {
 		return nil, fmt.Errorf("failed to select all attendances: %w", err)
 	}
+	defer rows.Close()
 
 	var attendances []models.Attendance
 	for rows.Next() {
@@ -103,14 +104,17 @@ func (attendanceRepo *AttendanceRepository) GetAllAttendance(ctx context.Context
 		attendances = append(attendances, attendance)
 	}
 
-	defer rows.Close()
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
 
 	return attendances, nil
 }
 
-func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context, id int, newAttendance models.Attendance) (*models.Attendance, error) {
+func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context, id int, newAttendance models.Attendance) error {
 	row := attendanceRepo.Pool.QueryRow(ctx,
-		"UPDATE attendance SET user_id = $1, department_id = $2, status = $3, comment = $4, marked_by = $5  WHERE id = $6 AND attendance.deleted_at IS NULL RETURNING id, user_id, department_id, status, comment, marked_by, created_at, updated_at",
+		"UPDATE attendance SET user_id = $1, department_id = $2, status = $3, comment = $4, marked_by = $5, updated_at = now()  WHERE id = $6 AND deleted_at IS NULL RETURNING id",
 		newAttendance.UserId,
 		newAttendance.DepartmentId,
 		newAttendance.Status,
@@ -119,28 +123,21 @@ func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context
 		id,
 	)
 
-	var attendance models.Attendance
+	var returnedId int
 	err := row.Scan(
-		&attendance.Id,
-		&attendance.UserId,
-		&attendance.DepartmentId,
-		&attendance.Status,
-		&attendance.Comment,
-		&attendance.MarkedBy,
-		&attendance.CreatedAt,
-		&attendance.UpdatedAt,
+		&returnedId,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return &attendance, nil
+	return nil
 
 }
 func (attendanceRepo *AttendanceRepository) DeleteAttendance(ctx context.Context, id int) error {
 	_, err := attendanceRepo.Pool.Exec(ctx,
-		"DELETE FROM attendance WHERE id = $1",
+		"UPDATE attendance SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
 		id)
 
 	if err != nil {
