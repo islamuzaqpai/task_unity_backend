@@ -13,9 +13,9 @@ type UserRepositoryInterface interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
-	AddUser(ctx context.Context, user *models.User) (*models.User, error)
-	UpdateUserProfile(ctx context.Context, id int, newUser models.User) (*models.User, error)
-	UpdateUserRole(ctx context.Context, userId, roleId int) error
+	AddUser(ctx context.Context, user *models.User) error
+	UpdateUserProfile(ctx context.Context, id int, newUser models.User) error
+	UpdateUserRole(ctx context.Context, userId, newRoleId int) error
 	UpdateUserPassword(ctx context.Context, id int, newPassword string) error
 	DeleteUser(ctx context.Context, id int) error
 }
@@ -55,6 +55,8 @@ func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User,
 		return nil, fmt.Errorf("failed to fetch users: %w", err)
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		var user models.User
 
@@ -75,7 +77,10 @@ func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User,
 		users = append(users, user)
 	}
 
-	defer rows.Close()
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
 
 	return users, nil
 }
@@ -120,7 +125,7 @@ func (userRepo *UserRepository) EmailExists(ctx context.Context, email string) (
 	return exists, nil
 }
 
-func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) (*models.User, error) {
+func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) error {
 	row := userRepo.Pool.QueryRow(ctx,
 		"INSERT INTO users (full_name, email, password, department_id) VALUES ($1, $2, $3, $4) RETURNING id, full_name, email, department_id",
 		user.FullName,
@@ -137,45 +142,43 @@ func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) 
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to add a user: %w", err)
+		return fmt.Errorf("failed to add a user: %w", err)
 	}
 
-	return user, nil
+	return nil
 }
 
-func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, newUser models.User) (*models.User, error) {
+func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, newUser models.User) error {
 	row := userRepo.Pool.QueryRow(ctx,
-		"UPDATE users SET full_name = $1, email = $2, updated_at = now() WHERE id = $3 RETURNING id, full_name, email, department_id, created_at, updated_at",
+		"UPDATE users SET full_name = $1, email = $2, updated_at = now() WHERE id = $3 RETURNING id",
 		newUser.FullName,
 		newUser.Email,
 		id,
 	)
 
-	var user models.User
+	var returnedId int
 
 	err := row.Scan(
-		&user.Id,
-		&user.FullName,
-		&user.Email,
-		&user.DepartmentId,
-		&user.CreatedAt,
-		&user.UpdatedAt,
+		&returnedId,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return &user, nil
+	return nil
 }
 
 func (userRepo *UserRepository) UpdateUserRole(ctx context.Context, userId, newRoleId int) error {
 	row := userRepo.Pool.QueryRow(ctx,
-		"UPDATE users_roles SET user_id = $1,role_id = $2 WHERE id = $3 RETURNING user_id, role_id")
+		"UPDATE users_roles SET role_id = $1 WHERE user_id = $2 RETURNING id",
+		newRoleId,
+		userId,
+	)
 
+	var id int
 	err := row.Scan(
-		&userId, //затестить
-		&newRoleId,
+		&id,
 	)
 
 	if err != nil {
