@@ -9,10 +9,10 @@ import (
 )
 
 type DepartmentRepositoryInterface interface {
-	AddDepartment(ctx context.Context, department models.Department) (*models.Department, error)
+	AddDepartment(ctx context.Context, department *models.Department) error
 	GetDepartmentById(ctx context.Context, id int) (*models.Department, error)
 	GetAllDepartments(ctx context.Context) ([]models.Department, error)
-	UpdateDepartment(ctx context.Context, id int, newDepartment models.Department) (*models.Department, error)
+	UpdateDepartment(ctx context.Context, id int, newDepartment models.Department) error
 	DeleteDepartment(ctx context.Context, id int) error
 }
 
@@ -20,9 +20,9 @@ type DepartmentRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (departmentRepo *DepartmentRepository) AddDepartment(ctx context.Context, department models.Department) (*models.Department, error) {
+func (departmentRepo *DepartmentRepository) AddDepartment(ctx context.Context, department *models.Department) error {
 	row := departmentRepo.Pool.QueryRow(ctx,
-		"INSERT INTO departments (name) VALUES ($1) RETURNING id, name",
+		"INSERT INTO departments (name) VALUES ($1) RETURNING id, name, created_at, updated_at",
 		department.Name,
 	)
 
@@ -32,15 +32,15 @@ func (departmentRepo *DepartmentRepository) AddDepartment(ctx context.Context, d
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return &department, nil
+	return nil
 }
 
 func (departmentRepo *DepartmentRepository) GetDepartmentById(ctx context.Context, id int) (*models.Department, error) {
 	row := departmentRepo.Pool.QueryRow(ctx,
-		"SELECT id, name, created_at, updated_at, deleted_at FROM departments WHERE id = $1",
+		"SELECT id, name, created_at, updated_at, deleted_at FROM departments WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
@@ -68,6 +68,7 @@ func (departmentRepo *DepartmentRepository) GetAllDepartments(ctx context.Contex
 	if err != nil {
 		return nil, fmt.Errorf("failed to select all departments: %w", err)
 	}
+	defer rows.Close()
 
 	var departments []models.Department
 
@@ -88,36 +89,36 @@ func (departmentRepo *DepartmentRepository) GetAllDepartments(ctx context.Contex
 		departments = append(departments, department)
 	}
 
-	defer rows.Close()
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
 
 	return departments, nil
 }
 
-func (departmentRepo *DepartmentRepository) UpdateDepartment(ctx context.Context, id int, newDepartment models.Department) (*models.Department, error) {
+func (departmentRepo *DepartmentRepository) UpdateDepartment(ctx context.Context, id int, newDepartment models.Department) error {
 	row := departmentRepo.Pool.QueryRow(ctx,
-		"UPDATE departments SET name = $1 WHERE id = $2 RETURNING id, name, created_at, updated_at",
+		"UPDATE departments SET name = $1, updated_at = now() WHERE id = $2 RETURNING id",
 		newDepartment.Name,
 		id,
 	)
 
-	var department models.Department
+	var returnedId int
 	err := row.Scan(
-		&department.Id,
-		&department.Name,
-		&department.CreatedAt,
-		&department.UpdatedAt,
+		&returnedId,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return &department, nil
+	return nil
 }
 
 func (departmentRepo *DepartmentRepository) DeleteDepartment(ctx context.Context, id int) error {
 	_, err := departmentRepo.Pool.Exec(ctx,
-		"DELETE FROM departments WHERE id = $1",
+		"UPDATE departments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
