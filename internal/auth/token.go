@@ -1,4 +1,4 @@
-package token
+package auth
 
 import (
 	"enactus/internal/models"
@@ -12,9 +12,9 @@ type JWTSecret struct {
 	Secret []byte
 }
 
-func (jwtSecret *JWTSecret) GenerateToken(user *models.User) (string, error) {
+func (jwtSecret *JWTSecret) GenerateToken(authUser *models.AuthUser) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.Id,
+		"user_id": authUser.Id,
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
 
