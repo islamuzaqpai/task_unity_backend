@@ -14,6 +14,7 @@ type UserServiceInterface interface {
 	Register(ctx context.Context, input models.RegisterInput) (*models.User, error)
 	Login(ctx context.Context, email, password string) (string, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
+	UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error)
 }
 
 type UserService struct {
@@ -24,7 +25,7 @@ type UserService struct {
 func (userS *UserService) Register(ctx context.Context, input models.RegisterInput) (*models.User, error) {
 	checkEmail, err := userS.UserRepo.EmailExists(ctx, input.Email)
 	if err != nil {
-		return nil, fmt.Errorf("email already exist")
+		return nil, fmt.Errorf("failed to check an email: %w", err)
 	}
 
 	if checkEmail {
@@ -85,4 +86,27 @@ func (userS *UserService) GetAllUsers(ctx context.Context) ([]models.User, error
 	}
 
 	return users, nil
+}
+
+func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error) {
+	checkEmail, err := userS.UserRepo.EmailExists(ctx, in.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check an email: %w", err)
+	}
+
+	if checkEmail {
+		return nil, fmt.Errorf("email already exists")
+	}
+
+	err = userS.UserRepo.UpdateUserProfile(ctx, id, in)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user profile: %w", err)
+	}
+
+	updatedUser, err := userS.UserRepo.GetUserById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get an user: %w", err)
+	}
+
+	return updatedUser, nil
 }
