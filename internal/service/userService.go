@@ -55,12 +55,12 @@ func (userS *UserService) Register(ctx context.Context, input models.RegisterInp
 }
 
 func (userS *UserService) Login(ctx context.Context, email, password string) (string, error) {
-	user, err := userS.UserRepo.GetUserByEmail(ctx, email)
+	authUser, err := userS.UserRepo.GetAuthUserByEmail(ctx, email)
 	if err != nil {
 		return "", fmt.Errorf("failed to find user with this email: %w", err)
 	}
 
-	isValid, err := utils.ValidatePassword(password, user.Password)
+	isValid, err := utils.ValidatePassword(password, authUser.Password)
 	if err != nil {
 		return "", fmt.Errorf("failed to validate a password: %w", err)
 	}
@@ -69,7 +69,7 @@ func (userS *UserService) Login(ctx context.Context, email, password string) (st
 		return "", fmt.Errorf("invalid password: %w", err)
 	}
 
-	tokenStr, err := userS.JwtSecret.GenerateToken(user)
+	tokenStr, err := userS.JwtSecret.GenerateToken(authUser)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate a token: %w", err)
 	}
