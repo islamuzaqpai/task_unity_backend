@@ -10,7 +10,7 @@ import (
 
 type UserRepositoryInterface interface {
 	GetUserById(ctx context.Context, id int) (*models.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	GetAuthUserByEmail(ctx context.Context, email string) (*models.AuthUser, error)
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
 	AddUser(ctx context.Context, user *models.User) error
@@ -85,27 +85,24 @@ func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User,
 	return users, nil
 }
 
-func (userRepo *UserRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (userRepo *UserRepository) GetAuthUserByEmail(ctx context.Context, email string) (*models.AuthUser, error) {
 	row := userRepo.Pool.QueryRow(ctx,
-		"SELECT id, full_name, email, department_id, created_at, updated_at, deleted_at FROM users WHERE email = $1",
+		"SELECT id, email, password, deleted_at FROM users WHERE email = $1 AND deleted_at IS NULL",
 		email,
 	)
 
-	var user models.User
+	var authUser models.AuthUser
 	err := row.Scan(
-		&user.Id,
-		&user.FullName,
-		&user.Email,
-		&user.DepartmentId,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-		&user.DeletedAt,
+		&authUser.Id,
+		&authUser.Email,
+		&authUser.Password,
+		&authUser.DeletedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan a row: %w", err)
 	}
 
-	return &user, nil
+	return &authUser, nil
 }
 
 func (userRepo *UserRepository) EmailExists(ctx context.Context, email string) (bool, error) {
