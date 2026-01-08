@@ -13,6 +13,7 @@ import (
 type UserServiceInterface interface {
 	Register(ctx context.Context, input models.RegisterInput) (*models.User, error)
 	Login(ctx context.Context, email, password string) (string, error)
+	GetAllUsers(ctx context.Context) ([]models.User, error)
 }
 
 type UserService struct {
@@ -75,4 +76,13 @@ func (userS *UserService) Login(ctx context.Context, email, password string) (st
 	}
 
 	return tokenStr, nil
+}
+
+func (userS *UserService) GetAllUsers(ctx context.Context) ([]models.User, error) {
+	users, err := userS.UserRepo.GetAllUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all users: %w", err)
+	}
+
+	return users, nil
 }
