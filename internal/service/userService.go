@@ -15,6 +15,7 @@ type UserServiceInterface interface {
 	Login(ctx context.Context, email, password string) (string, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
 	UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error)
+	UpdateUserPassword(ctx context.Context, id int, newPassword string) error
 }
 
 type UserService struct {
@@ -109,4 +110,21 @@ func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in mode
 	}
 
 	return updatedUser, nil
+}
+
+func (userS *UserService) UpdateUserPassword(ctx context.Context, id int, newPassword string) error {
+	if utf8.RuneCountInString(newPassword) < 8 {
+		return fmt.Errorf("password must be at least 8 characters long")
+	}
+
+	hashPassword, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash a password: %w", err)
+	}
+
+	err = userS.UserRepo.UpdateUserPassword(ctx, id, hashPassword)
+	if err != nil {
+		return fmt.Errorf("failed to update a password: %w", err)
+	}
+	return nil
 }
