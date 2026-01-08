@@ -16,6 +16,7 @@ type UserServiceInterface interface {
 	GetAllUsers(ctx context.Context) ([]models.User, error)
 	UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error)
 	UpdateUserPassword(ctx context.Context, id int, newPassword string) error
+	DeleteUser(ctx context.Context, id int) error
 }
 
 type UserService struct {
@@ -126,5 +127,14 @@ func (userS *UserService) UpdateUserPassword(ctx context.Context, id int, newPas
 	if err != nil {
 		return fmt.Errorf("failed to update a password: %w", err)
 	}
+	return nil
+}
+
+func (userS *UserService) DeleteUser(ctx context.Context, id int) error {
+	err := userS.UserRepo.DeleteUser(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete an user; %w", err)
+	}
+
 	return nil
 }
