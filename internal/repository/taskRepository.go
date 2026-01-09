@@ -23,7 +23,7 @@ type TaskRepository struct {
 func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) error {
 
 	row := taskRepo.Pool.QueryRow(ctx,
-		"INSERT INTO tasks (title, description, deadline, department_id, creator_id, assignee_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, title, description, deadline, department_id, creator_id, assignee_id, status",
+		"INSERT INTO tasks (title, description, deadline, department_id, creator_id, assignee_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, status, created_at, updated_at, deleted_at",
 		task.Title,
 		task.Description,
 		task.Deadline,
@@ -35,12 +35,10 @@ func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) 
 
 	err := row.Scan(
 		&task.Id,
-		&task.Title,
-		&task.Description,
-		&task.Deadline,
-		&task.DepartmentId, &task.CreatorId,
-		&task.AssigneeId,
 		&task.Status,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+		&task.DeletedAt,
 	)
 
 	if err != nil {
