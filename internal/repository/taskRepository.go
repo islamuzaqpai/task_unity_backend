@@ -120,14 +120,14 @@ func (taskRepo *TaskRepository) GetAllTasks(ctx context.Context) ([]models.Task,
 	return tasks, nil
 }
 
-func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, newTask models.Task) error {
+func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in models.UpdateTaskInput) error {
 	row := taskRepo.Pool.QueryRow(ctx,
 		"UPDATE tasks SET title = $1, description = $2, deadline = $3, assignee_id = $4, status = $5, updated_at = now() WHERE id = $6 AND deleted_at IS NULL RETURNING id",
-		newTask.Title,
-		newTask.Description,
-		newTask.Deadline,
-		newTask.AssigneeId,
-		newTask.Status,
+		in.Title,
+		in.Description,
+		in.Deadline,
+		in.AssigneeId,
+		in.Status,
 		id,
 	)
 
