@@ -10,6 +10,7 @@ import (
 type TaskServiceInterface interface {
 	AddTask(ctx context.Context, task *models.Task) (*models.Task, error)
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
+	GetTaskById(ctx context.Context, id int) (*models.Task, error)
 }
 
 type TaskService struct {
@@ -32,4 +33,13 @@ func (taskS *TaskService) GetAllTasks(ctx context.Context) ([]models.Task, error
 	}
 
 	return tasks, nil
+}
+
+func (taskS *TaskService) GetTaskById(ctx context.Context, id int) (*models.Task, error) {
+	task, err := taskS.TaskRepo.GetTaskById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get a task: %w", err)
+	}
+
+	return task, nil
 }
