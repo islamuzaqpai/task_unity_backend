@@ -11,6 +11,7 @@ type TaskServiceInterface interface {
 	AddTask(ctx context.Context, task *models.Task) (*models.Task, error)
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
+	UpdateTask(ctx context.Context, id int, in models.UpdateTaskInput) error
 }
 
 type TaskService struct {
@@ -42,4 +43,13 @@ func (taskS *TaskService) GetTaskById(ctx context.Context, id int) (*models.Task
 	}
 
 	return task, nil
+}
+
+func (taskS *TaskService) UpdateTask(ctx context.Context, id int, in models.UpdateTaskInput) error {
+	err := taskS.TaskRepo.UpdateTask(ctx, id, in)
+	if err != nil {
+		return fmt.Errorf("failed to update a task: %w", err)
+	}
+
+	return nil
 }
