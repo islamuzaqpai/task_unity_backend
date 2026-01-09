@@ -9,6 +9,7 @@ import (
 
 type TaskServiceInterface interface {
 	AddTask(ctx context.Context, task *models.Task) (*models.Task, error)
+	GetAllTasks(ctx context.Context) ([]models.Task, error)
 }
 
 type TaskService struct {
@@ -22,4 +23,13 @@ func (taskS *TaskService) AddTask(ctx context.Context, task *models.Task) (*mode
 	}
 
 	return task, nil
+}
+
+func (taskS *TaskService) GetAllTasks(ctx context.Context) ([]models.Task, error) {
+	tasks, err := taskS.TaskRepo.GetAllTasks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all tasks: %w", err)
+	}
+
+	return tasks, nil
 }
