@@ -12,6 +12,7 @@ type RoleServiceInterface interface {
 	GetAllRoles(ctx context.Context) ([]models.Role, error)
 	GetRoleById(ctx context.Context, id int) (*models.Role, error)
 	UpdateRole(ctx context.Context, id int, newRole *models.Role) error
+	DeleteRole(ctx context.Context, id int) error
 }
 
 type RoleService struct {
@@ -67,6 +68,15 @@ func (roleS *RoleService) UpdateRole(ctx context.Context, id int, newRole *model
 	err = roleS.RoleRepo.UpdateRole(ctx, id, newRole)
 	if err != nil {
 		return fmt.Errorf("failed to update a role: %w", err)
+	}
+
+	return nil
+}
+
+func (roleS *RoleService) DeleteRole(ctx context.Context, id int) error {
+	err := roleS.RoleRepo.DeleteRole(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete a role: %w", err)
 	}
 
 	return nil
