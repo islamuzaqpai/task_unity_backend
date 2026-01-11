@@ -9,6 +9,7 @@ import (
 
 type RoleServiceInterface interface {
 	AddRole(ctx context.Context, role *models.Role) (*models.Role, error)
+	GetAllRoles(ctx context.Context) ([]models.Role, error)
 }
 
 type RoleService struct {
@@ -31,4 +32,13 @@ func (roleS *RoleService) AddRole(ctx context.Context, role *models.Role) (*mode
 	}
 
 	return role, nil
+}
+
+func (roleS *RoleService) GetAllRoles(ctx context.Context) ([]models.Role, error) {
+	roles, err := roleS.RoleRepo.GetAllRoles(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all roles: %w", err)
+	}
+
+	return roles, nil
 }
