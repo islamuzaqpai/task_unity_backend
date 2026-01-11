@@ -11,6 +11,7 @@ type RoleServiceInterface interface {
 	AddRole(ctx context.Context, role *models.Role) (*models.Role, error)
 	GetAllRoles(ctx context.Context) ([]models.Role, error)
 	GetRoleById(ctx context.Context, id int) (*models.Role, error)
+	UpdateRole(ctx context.Context, id int, newRole *models.Role) error
 }
 
 type RoleService struct {
@@ -51,4 +52,22 @@ func (roleS *RoleService) GetRoleById(ctx context.Context, id int) (*models.Role
 	}
 
 	return role, nil
+}
+
+func (roleS *RoleService) UpdateRole(ctx context.Context, id int, newRole *models.Role) error {
+	checkRole, err := roleS.RoleRepo.RoleExists(ctx, newRole.Name)
+	if err != nil {
+		return fmt.Errorf("failed to check a role: %w", err)
+	}
+
+	if checkRole {
+		return fmt.Errorf("role is already exists")
+	}
+
+	err = roleS.RoleRepo.UpdateRole(ctx, id, newRole)
+	if err != nil {
+		return fmt.Errorf("failed to update a role: %w", err)
+	}
+
+	return nil
 }
