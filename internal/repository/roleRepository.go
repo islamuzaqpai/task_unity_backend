@@ -95,22 +95,16 @@ func (roleRepo *RoleRepository) GetAllRoles(ctx context.Context) ([]models.Role,
 	return roles, nil
 }
 
-func (roleRepo *RoleRepository) UpdateRole(ctx context.Context, id int, newRole models.Role) error {
-	row := roleRepo.Pool.QueryRow(ctx,
-		"UPDATE roles SET name = $1, department_id = $2, updated_at = now() WHERE id = $3 RETURNING id",
+func (roleRepo *RoleRepository) UpdateRole(ctx context.Context, id int, newRole *models.Role) error {
+	_, err := roleRepo.Pool.Exec(ctx,
+		"UPDATE roles SET name = $1, department_id = $2 WHERE id = $3",
 		newRole.Name,
 		newRole.DepartmentId,
 		id,
 	)
 
-	var returnedId int
-
-	err := row.Scan(
-		&returnedId,
-	)
-
 	if err != nil {
-		return fmt.Errorf("failed to scan: %w", err)
+		return fmt.Errorf("failed to update a role: %w", err)
 	}
 
 	return nil
