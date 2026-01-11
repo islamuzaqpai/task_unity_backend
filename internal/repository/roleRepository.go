@@ -14,6 +14,7 @@ type RoleRepositoryInterface interface {
 	GetAllRoles(ctx context.Context) ([]models.Role, error)
 	UpdateRole(ctx context.Context, id int, newRole models.Role) error
 	DeleteRole(ctx context.Context, id int) error
+	RoleExists(ctx context.Context, roleName string) (bool, error)
 }
 
 type RoleRepository struct {
@@ -22,15 +23,13 @@ type RoleRepository struct {
 
 func (roleRepo *RoleRepository) AddRole(ctx context.Context, role *models.Role) error {
 	row := roleRepo.Pool.QueryRow(ctx,
-		"INSERT INTO roles (name, department_id) VALUES ($1, $2) RETURNING id, name, department_id",
+		"INSERT INTO roles (name, department_id) VALUES ($1, $2) RETURNING id",
 		role.Name,
 		role.DepartmentId,
 	)
 
 	err := row.Scan(
 		&role.Id,
-		&role.Name,
-		&role.DepartmentId,
 	)
 
 	if err != nil {
@@ -128,4 +127,21 @@ func (roleRepo *RoleRepository) DeleteRole(ctx context.Context, id int) error {
 	}
 
 	return nil
+}
+
+func (roleRepo *RoleRepository) RoleExists(ctx context.Context, roleName string) (bool, error) {
+	row := roleRepo.Pool.QueryRow(ctx,
+		"SELECT EXISTS (SELECT 1 FROM roles WHERE name = $1)",
+		roleName,
+	)
+
+	var exists bool
+	err := row.Scan(
+		&exists,
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to scan: %w", err)
+	}
+
+	return exists, nil
 }
