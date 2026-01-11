@@ -12,6 +12,7 @@ type TaskServiceInterface interface {
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
 	UpdateTask(ctx context.Context, id int, in models.UpdateTaskInput) error
+	DeleteTask(ctx context.Context, id int) error
 }
 
 type TaskService struct {
@@ -49,6 +50,15 @@ func (taskS *TaskService) UpdateTask(ctx context.Context, id int, in models.Upda
 	err := taskS.TaskRepo.UpdateTask(ctx, id, in)
 	if err != nil {
 		return fmt.Errorf("failed to update a task: %w", err)
+	}
+
+	return nil
+}
+
+func (taskS *TaskService) DeleteTask(ctx context.Context, id int) error {
+	err := taskS.TaskRepo.DeleteTask(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete a task: %w", err)
 	}
 
 	return nil
