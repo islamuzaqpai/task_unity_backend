@@ -41,7 +41,7 @@ func (roleRepo *RoleRepository) AddRole(ctx context.Context, role *models.Role) 
 
 func (roleRepo *RoleRepository) GetRoleById(ctx context.Context, id int) (*models.Role, error) {
 	row := roleRepo.Pool.QueryRow(ctx,
-		"SELECT id, name, department_id FROM roles WHERE id = $1 AND deleted_at IS NULL",
+		"SELECT id, name, department_id FROM roles WHERE id = $1",
 		id,
 	)
 
