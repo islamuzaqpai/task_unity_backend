@@ -62,7 +62,7 @@ func (roleRepo *RoleRepository) GetRoleById(ctx context.Context, id int) (*model
 
 func (roleRepo *RoleRepository) GetAllRoles(ctx context.Context) ([]models.Role, error) {
 	rows, err := roleRepo.Pool.Query(ctx,
-		"SELECT id, name, department_id FROM roles WHERE deleted_at IS NULL")
+		"SELECT id, name, department_id FROM roles")
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all roles: %w", err)
@@ -118,7 +118,7 @@ func (roleRepo *RoleRepository) UpdateRole(ctx context.Context, id int, newRole 
 
 func (roleRepo *RoleRepository) DeleteRole(ctx context.Context, id int) error {
 	_, err := roleRepo.Pool.Exec(ctx,
-		"UPDATE roles SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
+		"DELETE FROM roles WHERE id = $1",
 		id,
 	)
 
