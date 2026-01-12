@@ -10,6 +10,7 @@ import (
 type DepartmentServiceInterface interface {
 	AddDepartment(ctx context.Context, department *models.Department) (*models.Department, error)
 	GetAllDepartments(ctx context.Context) ([]models.Department, error)
+	GetDepartmentById(ctx context.Context, id int) (*models.Department, error)
 }
 
 type DepartmentService struct {
@@ -41,4 +42,13 @@ func (departmentS *DepartmentService) GetAllDepartments(ctx context.Context) ([]
 	}
 
 	return departments, nil
+}
+
+func (departmentS *DepartmentService) GetDepartmentById(ctx context.Context, id int) (*models.Department, error) {
+	department, err := departmentS.DepartmentRepo.GetDepartmentById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get a department: %w", err)
+	}
+
+	return department, nil
 }
