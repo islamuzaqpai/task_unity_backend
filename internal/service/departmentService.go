@@ -9,6 +9,7 @@ import (
 
 type DepartmentServiceInterface interface {
 	AddDepartment(ctx context.Context, department *models.Department) (*models.Department, error)
+	GetAllDepartments(ctx context.Context) ([]models.Department, error)
 }
 
 type DepartmentService struct {
@@ -31,4 +32,13 @@ func (departmentS *DepartmentService) AddDepartment(ctx context.Context, departm
 	}
 
 	return department, nil
+}
+
+func (departmentS *DepartmentService) GetAllDepartments(ctx context.Context) ([]models.Department, error) {
+	departments, err := departmentS.DepartmentRepo.GetAllDepartments(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all departments: %w", err)
+	}
+
+	return departments, nil
 }
