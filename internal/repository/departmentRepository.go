@@ -22,13 +22,14 @@ type DepartmentRepository struct {
 
 func (departmentRepo *DepartmentRepository) AddDepartment(ctx context.Context, department *models.Department) error {
 	row := departmentRepo.Pool.QueryRow(ctx,
-		"INSERT INTO departments (name) VALUES ($1) RETURNING id, name, created_at, updated_at",
+		"INSERT INTO departments (name) VALUES ($1) RETURNING id, created_at, updated_at",
 		department.Name,
 	)
 
 	err := row.Scan(
 		&department.Id,
-		&department.Name,
+		&department.CreatedAt,
+		&department.UpdatedAt,
 	)
 
 	if err != nil {
@@ -127,4 +128,21 @@ func (departmentRepo *DepartmentRepository) DeleteDepartment(ctx context.Context
 	}
 
 	return nil
+}
+
+func (departmentRepo *DepartmentRepository) DepartmentExists(ctx context.Context, departmentName string) (bool, error) {
+	row := departmentRepo.Pool.QueryRow(ctx,
+		"SELECT EXISTS (SELECT 1 FROM departments WHERE name = $1)",
+		departmentName,
+	)
+
+	var exists bool
+	err := row.Scan(
+		&exists,
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to scan: %w", err)
+	}
+
+	return exists, nil
 }
