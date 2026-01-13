@@ -10,6 +10,7 @@ import (
 type CommentServiceInterface interface {
 	AddComment(ctx context.Context, comment *models.Comment) (*models.Comment, error)
 	GetAllComments(ctx context.Context) ([]models.Comment, error)
+	GetCommentById(ctx context.Context, id int) (*models.Comment, error)
 }
 
 type CommentService struct {
@@ -32,4 +33,13 @@ func (commentS *CommentService) GetAllComments(ctx context.Context) ([]models.Co
 	}
 
 	return comments, nil
+}
+
+func (commentS *CommentService) GetCommentById(ctx context.Context, id int) (*models.Comment, error) {
+	comment, err := commentS.CommentRepo.GetCommentById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get a comment: %w", err)
+	}
+
+	return comment, err
 }
