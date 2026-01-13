@@ -22,7 +22,7 @@ type CommentRepository struct {
 
 func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *models.Comment) error {
 	row := commentRepo.Pool.QueryRow(ctx,
-		"INSERT INTO tasks_comments (comment, task_id, user_id) VALUES ($1, $2, $3) RETURNING id, comment, task_id, user_id, created_at, updated_at",
+		"INSERT INTO comments (description, task_id, user_id) VALUES ($1, $2, $3) RETURNING id, created_at, updated_at",
 		comment.Description,
 		comment.TaskId,
 		comment.UserId,
@@ -30,9 +30,6 @@ func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *m
 
 	err := row.Scan(
 		&comment.Id,
-		&comment.Description,
-		&comment.TaskId,
-		&comment.UserId,
 		&comment.CreatedAt,
 		&comment.UpdatedAt,
 	)
@@ -46,7 +43,7 @@ func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *m
 
 func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int) (*models.Comment, error) {
 	row := commentRepo.Pool.QueryRow(ctx,
-		"SELECT id, comment, task_id, user_id, created_at, updated_at, deleted_at FROM tasks_comments WHERE id = $1 AND deleted_at IS NULL",
+		"SELECT id, description, task_id, user_id, created_at, updated_at, deleted_at FROM comments WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
@@ -70,7 +67,7 @@ func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int
 
 func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]models.Comment, error) {
 	rows, err := commentRepo.Pool.Query(ctx,
-		"SELECT id, comment, task_id, user_id, created_at, updated_at FROM tasks_comments WHERE deleted_at IS NULL",
+		"SELECT id, description, task_id, user_id, created_at, updated_at FROM comments WHERE deleted_at IS NULL",
 	)
 
 	if err != nil {
@@ -109,7 +106,7 @@ func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]mod
 
 func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, newComment models.Comment) error {
 	row := commentRepo.Pool.QueryRow(ctx,
-		"UPDATE tasks_comments SET comment = $1, task_id = $2, user_id = $3, updated_at = now() WHERE id = $4 AND deleted_at IS NULL RETURNING id",
+		"UPDATE comments SET description = $1, task_id = $2, user_id = $3, updated_at = now() WHERE id = $4 AND deleted_at IS NULL RETURNING id",
 		newComment.Description,
 		newComment.TaskId,
 		newComment.UserId,
@@ -130,7 +127,7 @@ func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int,
 
 func (commentRepo *CommentRepository) DeleteComment(ctx context.Context, id int) error {
 	_, err := commentRepo.Pool.Exec(ctx,
-		"UPDATE tasks_comments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
+		"UPDATE comments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
