@@ -12,6 +12,7 @@ type DepartmentServiceInterface interface {
 	GetAllDepartments(ctx context.Context) ([]models.Department, error)
 	GetDepartmentById(ctx context.Context, id int) (*models.Department, error)
 	UpdateDepartment(ctx context.Context, id int, newDepartment models.Department) error
+	DeleteDepartment(ctx context.Context, id int) error
 }
 
 type DepartmentService struct {
@@ -67,6 +68,15 @@ func (departmentS *DepartmentService) UpdateDepartment(ctx context.Context, id i
 	err = departmentS.DepartmentRepo.UpdateDepartment(ctx, id, newDepartment)
 	if err != nil {
 		return fmt.Errorf("failed to update a department: %w", err)
+	}
+
+	return nil
+}
+
+func (departmentS *DepartmentService) DeleteDepartment(ctx context.Context, id int) error {
+	err := departmentS.DepartmentRepo.DeleteDepartment(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete a department: %w", err)
 	}
 
 	return nil
