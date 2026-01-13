@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-type TaskComment struct {
+type Comment struct {
 	Id        int        `json:"id" db:"id"`
 	Comment   string     `json:"comment" db:"comment"`
 	TaskId    int        `json:"task_id" db:"task_id"`
