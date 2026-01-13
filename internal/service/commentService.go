@@ -9,6 +9,7 @@ import (
 
 type CommentServiceInterface interface {
 	AddComment(ctx context.Context, comment *models.Comment) (*models.Comment, error)
+	GetAllComments(ctx context.Context) ([]models.Comment, error)
 }
 
 type CommentService struct {
@@ -22,4 +23,13 @@ func (commentS *CommentService) AddComment(ctx context.Context, comment *models.
 	}
 
 	return comment, nil
+}
+
+func (commentS *CommentService) GetAllComments(ctx context.Context) ([]models.Comment, error) {
+	comments, err := commentS.CommentRepo.GetAllComments(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all comments: %w", err)
+	}
+
+	return comments, nil
 }
