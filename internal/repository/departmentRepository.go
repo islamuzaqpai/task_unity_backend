@@ -98,7 +98,7 @@ func (departmentRepo *DepartmentRepository) GetAllDepartments(ctx context.Contex
 	return departments, nil
 }
 
-func (departmentRepo *DepartmentRepository) UpdateDepartment(ctx context.Context, id int, newDepartment models.Department) error {
+func (departmentRepo *DepartmentRepository) UpdateDepartment(ctx context.Context, id int, newDepartment *models.Department) error {
 	row := departmentRepo.Pool.QueryRow(ctx,
 		"UPDATE departments SET name = $1, updated_at = now() WHERE id = $2 RETURNING id",
 		newDepartment.Name,
