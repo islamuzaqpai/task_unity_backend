@@ -104,12 +104,10 @@ func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]mod
 	return comments, nil
 }
 
-func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, newComment models.Comment) error {
+func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, description string) error {
 	row := commentRepo.Pool.QueryRow(ctx,
-		"UPDATE comments SET description = $1, task_id = $2, user_id = $3, updated_at = now() WHERE id = $4 AND deleted_at IS NULL RETURNING id",
-		newComment.Description,
-		newComment.TaskId,
-		newComment.UserId,
+		"UPDATE comments SET description = $1, updated_at = now() WHERE id = $2 AND deleted_at IS NULL RETURNING id",
+		description,
 		id,
 	)
 
