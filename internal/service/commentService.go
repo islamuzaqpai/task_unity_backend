@@ -11,7 +11,8 @@ type CommentServiceInterface interface {
 	AddComment(ctx context.Context, comment *models.Comment) (*models.Comment, error)
 	GetAllComments(ctx context.Context) ([]models.Comment, error)
 	GetCommentById(ctx context.Context, id int) (*models.Comment, error)
-	UpdateComment(ctx context.Context, id int, description string) (*models.Comment, error)
+	UpdateComment(ctx context.Context, id int, description string) error
+	DeleteComment(ctx context.Context, id int) error
 }
 
 type CommentService struct {
@@ -49,6 +50,15 @@ func (commentS *CommentService) UpdateComment(ctx context.Context, id int, descr
 	err := commentS.CommentRepo.UpdateComment(ctx, id, description)
 	if err != nil {
 		return fmt.Errorf("failed to update a comment: %w", err)
+	}
+
+	return nil
+}
+
+func (commentS *CommentService) DeleteComment(ctx context.Context, id int) error {
+	err := commentS.CommentRepo.DeleteComment(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete a comment: %w", err)
 	}
 
 	return nil
