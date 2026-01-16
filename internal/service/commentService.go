@@ -11,6 +11,7 @@ type CommentServiceInterface interface {
 	AddComment(ctx context.Context, comment *models.Comment) (*models.Comment, error)
 	GetAllComments(ctx context.Context) ([]models.Comment, error)
 	GetCommentById(ctx context.Context, id int) (*models.Comment, error)
+	UpdateComment(ctx context.Context, id int, description string) (*models.Comment, error)
 }
 
 type CommentService struct {
@@ -42,4 +43,13 @@ func (commentS *CommentService) GetCommentById(ctx context.Context, id int) (*mo
 	}
 
 	return comment, err
+}
+
+func (commentS *CommentService) UpdateComment(ctx context.Context, id int, description string) error {
+	err := commentS.CommentRepo.UpdateComment(ctx, id, description)
+	if err != nil {
+		return fmt.Errorf("failed to update a comment: %w", err)
+	}
+
+	return nil
 }
