@@ -1,8 +1,11 @@
 package app
 
 import (
+	"context"
 	"enactus/internal/config"
 	"enactus/internal/database"
+	"enactus/internal/repository"
+	"enactus/internal/service"
 	"fmt"
 	"log"
 
@@ -28,4 +31,15 @@ func Run() {
 	defer pool.Close()
 
 	fmt.Println("Success", pool)
+
+	commentRepo := repository.CommentRepository{Pool: pool}
+
+	commentS := service.CommentService{CommentRepo: &commentRepo}
+
+	err = commentS.DeleteComment(context.Background(), 5)
+	if err != nil {
+		log.Fatalf("fail: %v", err)
+	}
+
+	fmt.Println("yes")
 }
