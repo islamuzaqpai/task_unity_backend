@@ -22,8 +22,9 @@ type AttendanceRepository struct {
 
 func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, attendance *models.Attendance) error {
 	row := attendanceRepo.Pool.QueryRow(ctx,
-		"INSERT INTO attendance (user_id, department_id, status, comment, marked_by) VALUES ($1, $2, $3, $4, $5) RETURNING id, user_id, department_id, status, comment, marked_by, created_at, updated_at",
+		"INSERT INTO attendance (user_id, attendance_date, department_id, status, comment, marked_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at, deleted_at",
 		attendance.UserId,
+		attendance.Date,
 		attendance.DepartmentId,
 		attendance.Status,
 		attendance.Comment,
@@ -32,13 +33,9 @@ func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, a
 
 	err := row.Scan(
 		&attendance.Id,
-		&attendance.UserId,
-		&attendance.DepartmentId,
-		&attendance.Status,
-		&attendance.Comment,
-		&attendance.MarkedBy,
 		&attendance.CreatedAt,
 		&attendance.UpdatedAt,
+		&attendance.DeletedAt,
 	)
 
 	if err != nil {
@@ -50,7 +47,7 @@ func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, a
 
 func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error) {
 	row := attendanceRepo.Pool.QueryRow(ctx,
-		"SELECT id, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE id = $1 AND deleted_at IS NULL",
+		"SELECT id, attendance_date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
@@ -75,7 +72,7 @@ func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Contex
 
 func (attendanceRepo *AttendanceRepository) GetAllAttendance(ctx context.Context) ([]models.Attendance, error) {
 	rows, err := attendanceRepo.Pool.Query(ctx,
-		"SELECT id, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE deleted_at is null")
+		"SELECT id, attendance_date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE deleted_at is null")
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to select all attendances: %w", err)
@@ -88,6 +85,7 @@ func (attendanceRepo *AttendanceRepository) GetAllAttendance(ctx context.Context
 
 		err = rows.Scan(
 			&attendance.Id,
+			&attendance.Date,
 			&attendance.UserId,
 			&attendance.DepartmentId,
 			&attendance.Status,
@@ -114,8 +112,9 @@ func (attendanceRepo *AttendanceRepository) GetAllAttendance(ctx context.Context
 
 func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context, id int, newAttendance models.Attendance) error {
 	row := attendanceRepo.Pool.QueryRow(ctx,
-		"UPDATE attendance SET user_id = $1, department_id = $2, status = $3, comment = $4, marked_by = $5, updated_at = now()  WHERE id = $6 AND deleted_at IS NULL RETURNING id",
+		"UPDATE attendance SET user_id = $1, attendance_date = $2, department_id = $3, status = $4, comment = $5, marked_by = $6, updated_at = now()  WHERE id = $7 AND deleted_at IS NULL RETURNING id",
 		newAttendance.UserId,
+		newAttendance.Date,
 		newAttendance.DepartmentId,
 		newAttendance.Status,
 		newAttendance.Comment,
