@@ -4,6 +4,7 @@ import "time"
 
 type Attendance struct {
 	Id           int        `json:"id" db:"id"`
+	Date         time.Time  `json:"date" db:"attendance_date"`
 	UserId       int        `json:"user_id" db:"user_id"`
 	DepartmentId *int       `json:"department_id,omitempty" db:"department_id"`
 	Status       string     `json:"status" validate:"oneof=present absent excused" db:"status"`
