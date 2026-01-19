@@ -10,6 +10,7 @@ import (
 type AttendanceServiceInterface interface {
 	AddAttendance(ctx context.Context, attendance *models.Attendance) (*models.Attendance, error)
 	GetAllAttendances(ctx context.Context) ([]models.Attendance, error)
+	GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error)
 }
 
 type AttendanceService struct {
@@ -32,4 +33,13 @@ func (attendanceS *AttendanceService) GetAllAttendances(ctx context.Context) ([]
 	}
 
 	return attendances, nil
+}
+
+func (attendanceS *AttendanceService) GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error) {
+	attendance, err := attendanceS.AttendanceRepo.GetAttendanceById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get an attendance: %w", err)
+	}
+
+	return attendance, nil
 }
