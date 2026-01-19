@@ -11,7 +11,7 @@ import (
 type AttendanceRepositoryInterface interface {
 	AddAttendance(ctx context.Context, attendance *models.Attendance) error
 	GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error)
-	GetAllAttendance(ctx context.Context) ([]models.Attendance, error)
+	GetAllAttendances(ctx context.Context) ([]models.Attendance, error)
 	UpdateAttendance(ctx context.Context, id int, newAttendance models.Attendance) error
 	DeleteAttendance(ctx context.Context, id int) error
 }
@@ -70,7 +70,7 @@ func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Contex
 	return &attendance, nil
 }
 
-func (attendanceRepo *AttendanceRepository) GetAllAttendance(ctx context.Context) ([]models.Attendance, error) {
+func (attendanceRepo *AttendanceRepository) GetAllAttendances(ctx context.Context) ([]models.Attendance, error) {
 	rows, err := attendanceRepo.Pool.Query(ctx,
 		"SELECT id, attendance_date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE deleted_at is null")
 
