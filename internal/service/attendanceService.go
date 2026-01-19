@@ -11,6 +11,7 @@ type AttendanceServiceInterface interface {
 	AddAttendance(ctx context.Context, attendance *models.Attendance) (*models.Attendance, error)
 	GetAllAttendances(ctx context.Context) ([]models.Attendance, error)
 	GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error)
+	UpdateAttendance(ctx context.Context, id int, in *models.UpdateAttendanceInput) error
 }
 
 type AttendanceService struct {
@@ -42,4 +43,13 @@ func (attendanceS *AttendanceService) GetAttendanceById(ctx context.Context, id 
 	}
 
 	return attendance, nil
+}
+
+func (attendanceS *AttendanceService) UpdateAttendance(ctx context.Context, id int, in *models.UpdateAttendanceInput) error {
+	err := attendanceS.AttendanceRepo.UpdateAttendance(ctx, id, in)
+	if err != nil {
+		return fmt.Errorf("failed to update an attendance: %w", err)
+	}
+
+	return nil
 }
