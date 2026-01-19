@@ -29,3 +29,8 @@ type UpdateTaskInput struct {
 	AssigneeId  int
 	Status      string
 }
+
+type UpdateAttendanceInput struct {
+	Status  string
+	Comment string
+}
