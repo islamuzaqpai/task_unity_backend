@@ -54,6 +54,7 @@ func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Contex
 	var attendance models.Attendance
 	err := row.Scan(
 		&attendance.Id,
+		&attendance.Date,
 		&attendance.UserId,
 		&attendance.DepartmentId,
 		&attendance.Status,
