@@ -9,6 +9,7 @@ import (
 
 type AttendanceServiceInterface interface {
 	AddAttendance(ctx context.Context, attendance *models.Attendance) (*models.Attendance, error)
+	GetAllAttendances(ctx context.Context) ([]models.Attendance, error)
 }
 
 type AttendanceService struct {
@@ -22,4 +23,13 @@ func (attendanceS *AttendanceService) AddAttendance(ctx context.Context, attenda
 	}
 
 	return attendance, nil
+}
+
+func (attendanceS *AttendanceService) GetAllAttendances(ctx context.Context) ([]models.Attendance, error) {
+	attendances, err := attendanceS.AttendanceRepo.GetAllAttendances(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all attendances: %w", err)
+	}
+
+	return attendances, nil
 }
