@@ -1,14 +1,17 @@
 package app
 
 import (
-	"context"
+	"enactus/internal/auth"
 	"enactus/internal/config"
 	"enactus/internal/database"
+	"enactus/internal/handler"
 	"enactus/internal/repository"
+	"enactus/internal/routes"
 	"enactus/internal/service"
 	"fmt"
 	"log"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
@@ -32,14 +35,18 @@ func Run() {
 
 	fmt.Println("Success", pool)
 
-	commentRepo := repository.CommentRepository{Pool: pool}
+	userRepo := repository.UserRepository{Pool: pool}
+	userS := service.UserService{
+		UserRepo:  &userRepo,
+		JwtSecret: &auth.JWTSecret{Secret: []byte(cfg.JWTSecret)},
+	}
+	userH := handler.UserHandler{UserS: &userS}
 
-	commentS := service.CommentService{CommentRepo: &commentRepo}
+	router := gin.Default()
+	routes.UserRoutes(&userH, router)
 
-	err = commentS.DeleteComment(context.Background(), 5)
+	err = router.Run(":8080")
 	if err != nil {
 		log.Fatalf("fail: %v", err)
 	}
-
-	fmt.Println("yes")
 }
