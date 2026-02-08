@@ -7,7 +7,7 @@ type User struct {
 	FullName     string     `json:"full_name" db:"full_name"`
 	Email        string     `json:"email" db:"email"`
 	Password     string     `json:"password" db:"password"`
-	DepartmentId *int       `json:"department_id,omitempty" db:"department_id"`
+	DepartmentId *int       `json:"department_id" db:"department_id"`
 	CreatedAt    time.Time  `json:"createdAt" db:"created_at"`
 	UpdatedAt    time.Time  `json:"updatedAt" db:"updated_at"`
 	DeletedAt    *time.Time `json:"deletedAt,omitempty" db:"deleted_at"`

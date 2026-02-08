@@ -5,10 +5,10 @@ import (
 )
 
 type RegisterInput struct {
-	FullName     string
-	Email        string
-	Password     string
-	DepartmentId *int
+	FullName     string `json:"full_name"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	DepartmentId *int   `json:"department_id"`
 }
 
 type UpdateUserProfileInput struct {
