@@ -24,6 +24,12 @@ type UserService struct {
 	JwtSecret *auth.JWTSecret
 }
 
+func NewUserService(userR *repository.UserRepository) *UserService {
+	return &UserService{
+		UserRepo: userR,
+	}
+}
+
 func (userS *UserService) Register(ctx context.Context, input models.RegisterInput) (*models.User, error) {
 	checkEmail, err := userS.UserRepo.EmailExists(ctx, input.Email)
 	if err != nil {

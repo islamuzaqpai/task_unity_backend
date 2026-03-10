@@ -23,6 +23,10 @@ type UserRepository struct {
 	Pool *pgxpool.Pool
 }
 
+func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
+	return &UserRepository{Pool: pool}
+}
+
 func (userRepo *UserRepository) GetUserById(ctx context.Context, id int) (*models.User, error) {
 	row := userRepo.Pool.QueryRow(ctx,
 		"SELECT id, full_name, email, department_id, created_at, updated_at, deleted_at FROM users WHERE id = $1",

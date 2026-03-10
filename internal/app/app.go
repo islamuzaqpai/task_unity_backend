@@ -1,7 +1,6 @@
 package app
 
 import (
-	"enactus/internal/auth"
 	"enactus/internal/config"
 	"enactus/internal/database"
 	"enactus/internal/handler"
@@ -10,8 +9,8 @@ import (
 	"enactus/internal/service"
 	"fmt"
 	"log"
+	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
@@ -35,18 +34,18 @@ func Run() {
 
 	fmt.Println("Success", pool)
 
-	userRepo := repository.UserRepository{Pool: pool}
-	userS := service.UserService{
-		UserRepo:  &userRepo,
-		JwtSecret: &auth.JWTSecret{Secret: []byte(cfg.JWTSecret)},
-	}
-	userH := handler.UserHandler{UserS: &userS}
+	userR := repository.NewUserRepository(pool)
+	userS := service.NewUserService(userR)
+	userH := handler.NewUserHandler(userS)
 
-	router := gin.Default()
-	routes.UserRoutes(&userH, router)
+	mux := http.NewServeMux()
+	routes.UserRoutes(userH, mux)
 
-	err = router.Run(":8080")
-	if err != nil {
-		log.Fatalf("fail: %v", err)
+	addr := ":8080"
+	server := &http.Server{
+		Addr:    addr,
+		Handler: mux,
 	}
+
+	log.Fatal(server.ListenAndServe())
 }
