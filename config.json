@@ -1,0 +1,17 @@
+{
+  "server": {
+    "host": "localhost",
+    "port": 8080,
+    "read_timeout": 10,
+    "write_timeout": 10
+  },
+  "database": {
+    "host": "localhost",
+    "port": 5433,
+    "user": "gouser",
+    "password": "gopassword",
+    "db_name": "task_unity_db",
+    "ssl_modeMode": "disable"
+  },
+  "jwt_secret": "secret"
+}

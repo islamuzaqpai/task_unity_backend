@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  postgres:
+    build: .
+    container_name: task_unity_postgres
+
+    environment:
+      POSTGRES_USER: gouser
+      POSTGRES_PASSWORD: gopassword
+      POSTGRES_DB: task_unity_db
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:

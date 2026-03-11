@@ -4,6 +4,7 @@ import (
 	"context"
 	"enactus/internal/models"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -21,6 +22,10 @@ type UserRepositoryInterface interface {
 
 type UserRepository struct {
 	Pool *pgxpool.Pool
+}
+
+func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
+	return &UserRepository{Pool: pool}
 }
 
 func (userRepo *UserRepository) GetUserById(ctx context.Context, id int) (*models.User, error) {
@@ -104,7 +109,7 @@ func (userRepo *UserRepository) GetAuthUserByEmail(ctx context.Context, email st
 	return &authUser, nil
 }
 
-func (userRepo *UserRepository) EmailExists(ctx context.Context, email string) (bool, error) {
+func (userRepo *UserRepository) EmailExists(ctx context.Context, email *string) (bool, error) {
 	row := userRepo.Pool.QueryRow(ctx,
 		"SELECT EXISTS (SELECT 1 FROM users WHERE email = $1)",
 		email,
@@ -145,23 +150,34 @@ func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) 
 }
 
 func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) error {
-	row := userRepo.Pool.QueryRow(ctx,
-		"UPDATE users SET full_name = $1, email = $2, updated_at = now() WHERE id = $3 RETURNING id",
-		in.FullName,
-		in.Email,
-		id,
-	)
+	query := `UPDATE users SET `
+	args := []any{}
+	i := 1
 
-	var returnedId int
-
-	err := row.Scan(
-		&returnedId,
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to scan: %w", err)
+	if in.FullName != nil {
+		query += fmt.Sprintf("full_name = $%d,", i)
+		args = append(args, *in.FullName)
+		i++
 	}
 
+	if in.Email != nil {
+		query += fmt.Sprintf("email = $%d,", i)
+		args = append(args, *in.Email)
+		i++
+	}
+
+	if len(args) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
+
+	query = strings.TrimSuffix(query, ",")
+	query += fmt.Sprintf(" WHERE id = $%d", i)
+
+	args = append(args, id)
+	_, err := userRepo.Pool.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update: %w", err)
+	}
 	return nil
 }
 

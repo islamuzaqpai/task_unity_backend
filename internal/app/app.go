@@ -10,23 +10,21 @@ import (
 	"enactus/internal/service"
 	"fmt"
 	"log"
-
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	"net/http"
 )
 
 func Run() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("fail: %v", err)
-	}
-
-	cfg, err := config.LoadFromEnv()
+	cfg, err := config.LoadConfig("config.json")
 	if err != nil {
 		log.Fatalf("failed to load data from .env: %v", err)
 	}
 
-	pool, err := database.Connect(cfg.DB)
+	err = config.ValidateConfig(cfg)
+	if err != nil {
+		log.Fatalf("invalid token: %v", err)
+	}
+
+	pool, err := database.Connect(cfg.Database)
 	if err != nil {
 		log.Fatalf("failed to create pool: %v", err)
 	}
@@ -35,18 +33,19 @@ func Run() {
 
 	fmt.Println("Success", pool)
 
-	userRepo := repository.UserRepository{Pool: pool}
-	userS := service.UserService{
-		UserRepo:  &userRepo,
-		JwtSecret: &auth.JWTSecret{Secret: []byte(cfg.JWTSecret)},
-	}
-	userH := handler.UserHandler{UserS: &userS}
+	jwtSecret := auth.JWTSecret{Secret: []byte(cfg.JWTSecret)}
+	userR := repository.NewUserRepository(pool)
+	userS := service.NewUserService(userR, &jwtSecret)
+	userH := handler.NewUserHandler(userS)
 
-	router := gin.Default()
-	routes.UserRoutes(&userH, router)
+	mux := http.NewServeMux()
+	routes.UserRoutes(userH, mux, &jwtSecret)
 
-	err = router.Run(":8080")
-	if err != nil {
-		log.Fatalf("fail: %v", err)
+	addr := ":8080"
+	server := &http.Server{
+		Addr:    addr,
+		Handler: mux,
 	}
+
+	log.Fatal(server.ListenAndServe())
 }

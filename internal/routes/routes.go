@@ -1,11 +1,17 @@
 package routes
 
 import (
+	"enactus/internal/auth"
 	"enactus/internal/handler"
-
-	"github.com/gin-gonic/gin"
+	"enactus/internal/httpx"
+	"net/http"
 )
 
-func UserRoutes(userH *handler.UserHandler, router *gin.Engine) {
-	router.POST("/signUp", userH.Register)
+func UserRoutes(userH *handler.UserHandler, mux *http.ServeMux, jwtSecret *auth.JWTSecret) {
+	mux.HandleFunc("POST /users/register", httpx.WrapHandler(userH.Register))
+	mux.HandleFunc("GET /users", httpx.WrapHandler(userH.GetAllUsers))
+	mux.HandleFunc("GET /users/{id}", httpx.WrapHandler(userH.GetUserById))
+	mux.HandleFunc("POST /users/login", httpx.WrapHandler(userH.Login))
+	mux.HandleFunc("PATCH /users/update/profile/{id}", httpx.WrapHandler(userH.UpdateUserProfile))
+
 }
