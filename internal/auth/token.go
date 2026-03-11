@@ -3,6 +3,7 @@ package auth
 import (
 	"enactus/internal/models"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -20,6 +21,7 @@ func (jwtSecret *JWTSecret) GenerateToken(authUser *models.AuthUser) (string, er
 
 	tokenStr, err := token.SignedString(jwtSecret.Secret)
 	if err != nil {
+		log.Println("JWT generation error:", err)
 		return "", fmt.Errorf("failed to convert jwt to string: %w", err)
 	}
 

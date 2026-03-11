@@ -1,6 +1,7 @@
 package app
 
 import (
+	"enactus/internal/auth"
 	"enactus/internal/config"
 	"enactus/internal/database"
 	"enactus/internal/handler"
@@ -10,22 +11,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/joho/godotenv"
 )
 
 func Run() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("fail: %v", err)
-	}
-
-	cfg, err := config.LoadFromEnv()
+	cfg, err := config.LoadConfig("config.json")
 	if err != nil {
 		log.Fatalf("failed to load data from .env: %v", err)
 	}
 
-	pool, err := database.Connect(cfg.DB)
+	err = config.ValidateConfig(cfg)
+	if err != nil {
+		log.Fatalf("invalid token: %v", err)
+	}
+
+	pool, err := database.Connect(cfg.Database)
 	if err != nil {
 		log.Fatalf("failed to create pool: %v", err)
 	}
@@ -34,12 +33,13 @@ func Run() {
 
 	fmt.Println("Success", pool)
 
+	jwtSecret := auth.JWTSecret{Secret: []byte(cfg.JWTSecret)}
 	userR := repository.NewUserRepository(pool)
-	userS := service.NewUserService(userR)
+	userS := service.NewUserService(userR, &jwtSecret)
 	userH := handler.NewUserHandler(userS)
 
 	mux := http.NewServeMux()
-	routes.UserRoutes(userH, mux)
+	routes.UserRoutes(userH, mux, &jwtSecret)
 
 	addr := ":8080"
 	server := &http.Server{

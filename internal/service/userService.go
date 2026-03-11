@@ -14,6 +14,7 @@ type UserServiceInterface interface {
 	Register(ctx context.Context, input models.RegisterInput) (*models.User, error)
 	Login(ctx context.Context, email, password string) (string, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
+	GetUserById(ctx context.Context, id int) (*models.User, error)
 	UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error)
 	UpdateUserPassword(ctx context.Context, id int, newPassword string) error
 	DeleteUser(ctx context.Context, id int) error
@@ -24,14 +25,15 @@ type UserService struct {
 	JwtSecret *auth.JWTSecret
 }
 
-func NewUserService(userR *repository.UserRepository) *UserService {
+func NewUserService(userR *repository.UserRepository, jwtSecret *auth.JWTSecret) *UserService {
 	return &UserService{
-		UserRepo: userR,
+		UserRepo:  userR,
+		JwtSecret: jwtSecret,
 	}
 }
 
 func (userS *UserService) Register(ctx context.Context, input models.RegisterInput) (*models.User, error) {
-	checkEmail, err := userS.UserRepo.EmailExists(ctx, input.Email)
+	checkEmail, err := userS.UserRepo.EmailExists(ctx, &input.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check an email: %w", err)
 	}
@@ -96,17 +98,28 @@ func (userS *UserService) GetAllUsers(ctx context.Context) ([]models.User, error
 	return users, nil
 }
 
-func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error) {
-	checkEmail, err := userS.UserRepo.EmailExists(ctx, in.Email)
+func (userS *UserService) GetUserById(ctx context.Context, id int) (*models.User, error) {
+	user, err := userS.UserRepo.GetUserById(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check an email: %w", err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	if checkEmail {
-		return nil, fmt.Errorf("email already exists")
+	return user, nil
+}
+
+func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error) {
+	if in.Email != nil {
+		checkEmail, err := userS.UserRepo.EmailExists(ctx, in.Email)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check an email: %w", err)
+		}
+
+		if checkEmail {
+			return nil, fmt.Errorf("email already exists")
+		}
 	}
 
-	err = userS.UserRepo.UpdateUserProfile(ctx, id, in)
+	err := userS.UserRepo.UpdateUserProfile(ctx, id, in)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user profile: %w", err)
 	}

@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Connect(dbCfg config.DB) (*pgxpool.Pool, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s port=%s dbname=%s",
+func Connect(dbCfg config.DatabaseConfig) (*pgxpool.Pool, error) {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s port=%d dbname=%s",
 		dbCfg.Host,
 		dbCfg.User,
 		dbCfg.Password,

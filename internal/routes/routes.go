@@ -1,12 +1,17 @@
 package routes
 
 import (
+	"enactus/internal/auth"
 	"enactus/internal/handler"
 	"enactus/internal/httpx"
 	"net/http"
 )
 
-func UserRoutes(userH *handler.UserHandler, mux *http.ServeMux) {
-	mux.HandleFunc("POST /users", httpx.WrapHandler(userH.Register))
+func UserRoutes(userH *handler.UserHandler, mux *http.ServeMux, jwtSecret *auth.JWTSecret) {
+	mux.HandleFunc("POST /users/register", httpx.WrapHandler(userH.Register))
 	mux.HandleFunc("GET /users", httpx.WrapHandler(userH.GetAllUsers))
+	mux.HandleFunc("GET /users/{id}", httpx.WrapHandler(userH.GetUserById))
+	mux.HandleFunc("POST /users/login", httpx.WrapHandler(userH.Login))
+	mux.HandleFunc("PATCH /users/update/profile/{id}", httpx.WrapHandler(userH.UpdateUserProfile))
+
 }

@@ -4,26 +4,30 @@ import (
 	"context"
 	"enactus/internal/auth"
 	"enactus/internal/httpx"
-	"fmt"
 	"net/http"
+	"strings"
 )
 
-func AuthMiddleware(jwt auth.JWTSecret, next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func AuthMiddleware(jwtSecret *auth.JWTSecret, next httpx.AppHandler) httpx.AppHandler {
+	return func(w http.ResponseWriter, r *http.Request) error {
 		tokenStr := r.Header.Get("Authorization")
-		fmt.Println(tokenStr)
+
 		if tokenStr == "" {
-			httpx.WriteError(w, http.StatusUnauthorized, "invalid token")
-			return
+			return httpx.BadRequest("invalid token")
 		}
 
-		token, err := jwt.ValidateToken(tokenStr)
+		const bearerPrefix = "Bearer "
+		tokenStr = strings.TrimSpace(tokenStr)
+		if len(tokenStr) > len(bearerPrefix) && tokenStr[:len(bearerPrefix)] == bearerPrefix {
+			tokenStr = tokenStr[len(bearerPrefix):]
+		}
+
+		token, err := jwtSecret.ValidateToken(tokenStr)
 		if err != nil {
-			httpx.WriteError(w, http.StatusUnauthorized, "invalid token")
-			return
+			return httpx.ValidationError(err)
 		}
 
 		ctx := context.WithValue(r.Context(), "id", token.Claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		return next(w, r.WithContext(ctx))
 	}
 }
