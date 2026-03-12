@@ -7,11 +7,10 @@ import (
 )
 
 type AppError struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Status  int               `json:"-"`
-	Details map[string]string `json:"details,omitempty"`
-	Err     error             `json:"-"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Status  int    `json:"-"`
+	Err     error  `json:"-"`
 }
 
 func (e *AppError) Error() string {
@@ -56,6 +55,14 @@ func InternalError(err error) *AppError {
 	}
 }
 
+func Unauthorized(message string) *AppError {
+	return &AppError{
+		Code:    "UNAUTHORIZED",
+		Message: message,
+		Status:  http.StatusUnauthorized,
+	}
+}
+
 type AppHandler func(w http.ResponseWriter, r *http.Request) error
 
 func WrapHandler(h AppHandler) http.HandlerFunc {
@@ -72,6 +79,6 @@ func WrapHandler(h AppHandler) http.HandlerFunc {
 		}
 
 		internalErr := InternalError(err)
-		WriteJSON(w, internalErr.Status, appErr)
+		WriteJSON(w, internalErr.Status, internalErr)
 	}
 }
