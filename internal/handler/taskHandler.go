@@ -7,12 +7,15 @@ import (
 	"enactus/internal/service"
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 type TaskHandlerInterface interface {
 	AddTask(w http.ResponseWriter, r *http.Request) error
 	GetAllTasks(w http.ResponseWriter, r *http.Request) error
 	GetAllTasksByAssigneeId(w http.ResponseWriter, r *http.Request) error
+	GetTaskById(w http.ResponseWriter, r *http.Request) error
+	UpdateTask(w http.ResponseWriter, r *http.Request) error
 }
 
 type TaskHandler struct {
@@ -75,4 +78,15 @@ func (taskH *TaskHandler) GetAllTasksByAssigneeId(w http.ResponseWriter, r *http
 
 	httpx.WriteJSON(w, http.StatusOK, tasks)
 	return nil
+}
+
+func (taskH *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	idStr := r.PathValue("id")
+	id, err := strconv.
+}
+
+func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) error {
+
 }
