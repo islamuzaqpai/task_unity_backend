@@ -17,6 +17,7 @@ type UserHandlerInterface interface {
 	Login(w http.ResponseWriter, r *http.Request) error
 	UpdateUserProfile(w http.ResponseWriter, r *http.Request) error
 	UpdateUserPassword(w http.ResponseWriter, r *http.Request) error
+	DeleteUser(w http.ResponseWriter, r *http.Request) error
 }
 
 type UserHandler struct {
@@ -115,6 +116,7 @@ func (userH *UserHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Reque
 	httpx.WriteJSON(w, http.StatusOK, updated)
 	return nil
 }
+
 func (userH *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
@@ -136,5 +138,23 @@ func (userH *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Requ
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, "OK")
+	return nil
+}
+
+func (userH *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return httpx.BadRequest("invalid ID")
+	}
+
+	err = userH.UserService.DeleteUser(ctx, id)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
