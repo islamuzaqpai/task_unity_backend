@@ -2,14 +2,14 @@ package repository
 
 import (
 	"context"
-	"enactus/internal/models"
+	"enactus/internal/models/inputs"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UsersRolesRepositoryInterface interface {
-	SetUserRole(ctx context.Context, in models.UsersRolesInput) error
+	SetUserRole(ctx context.Context, in inputs.UsersRolesInput) error
 	DeleteUserRole(ctx context.Context, id int) error
 }
 
@@ -17,7 +17,7 @@ type UsersRolesRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (usersRolesRepo *UsersRolesRepository) SetUserRole(ctx context.Context, in models.UsersRolesInput) error {
+func (usersRolesRepo *UsersRolesRepository) SetUserRole(ctx context.Context, in inputs.UsersRolesInput) error {
 	_, err := usersRolesRepo.Pool.Exec(ctx,
 		"INSERT INTO users_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET role_id = EXCLUDED.role_id",
 		in.UserId,

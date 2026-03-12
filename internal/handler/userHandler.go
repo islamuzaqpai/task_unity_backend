@@ -2,7 +2,7 @@ package handler
 
 import (
 	"enactus/internal/httpx"
-	"enactus/internal/models"
+	"enactus/internal/models/inputs"
 	"enactus/internal/service"
 	"encoding/json"
 	"log"
@@ -30,7 +30,7 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 
 func (userH UserHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	var req models.RegisterInput
+	var req inputs.RegisterInput
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -61,7 +61,7 @@ func (userH *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) er
 func (userH *UserHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
-	var req models.LoginInput
+	var req inputs.LoginInput
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return httpx.BadRequest("invalid request body")
@@ -102,7 +102,7 @@ func (userH *UserHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Reque
 		return httpx.BadRequest("invalid ID")
 	}
 
-	var req models.UpdateUserProfileInput
+	var req inputs.UpdateUserProfileInput
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return httpx.BadRequest("invalid request body")
@@ -126,7 +126,7 @@ func (userH *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Requ
 		return httpx.BadRequest("invalid ID")
 	}
 
-	var req models.UpdatePasswordInput
+	var req inputs.UpdatePasswordInput
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return httpx.BadRequest("invalid request body")

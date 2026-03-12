@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"enactus/internal/models"
+	"enactus/internal/models/inputs"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -12,7 +13,7 @@ type AttendanceRepositoryInterface interface {
 	AddAttendance(ctx context.Context, attendance *models.Attendance) error
 	GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error)
 	GetAllAttendances(ctx context.Context) ([]models.Attendance, error)
-	UpdateAttendance(ctx context.Context, id int, in *models.UpdateAttendanceInput) error
+	UpdateAttendance(ctx context.Context, id int, in *inputs.UpdateAttendanceInput) error
 	DeleteAttendance(ctx context.Context, id int) error
 }
 
@@ -111,7 +112,7 @@ func (attendanceRepo *AttendanceRepository) GetAllAttendances(ctx context.Contex
 	return attendances, nil
 }
 
-func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context, id int, in *models.UpdateAttendanceInput) error {
+func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context, id int, in *inputs.UpdateAttendanceInput) error {
 	row := attendanceRepo.Pool.QueryRow(ctx,
 		"UPDATE attendance SET status = $1, comment = $2, updated_at = now()  WHERE id = $3 AND deleted_at IS NULL RETURNING id",
 		in.Status,

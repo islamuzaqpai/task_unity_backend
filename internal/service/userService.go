@@ -4,6 +4,7 @@ import (
 	"context"
 	"enactus/internal/auth"
 	"enactus/internal/models"
+	"enactus/internal/models/inputs"
 	"enactus/internal/repository"
 	"enactus/internal/utils"
 	"fmt"
@@ -11,11 +12,11 @@ import (
 )
 
 type UserServiceInterface interface {
-	Register(ctx context.Context, input models.RegisterInput) (*models.User, error)
+	Register(ctx context.Context, input inputs.RegisterInput) (*models.User, error)
 	Login(ctx context.Context, email, password string) (string, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
 	GetUserById(ctx context.Context, id int) (*models.User, error)
-	UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error)
+	UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) (*models.User, error)
 	UpdateUserPassword(ctx context.Context, id int, newPassword string) error
 	DeleteUser(ctx context.Context, id int) error
 }
@@ -32,7 +33,7 @@ func NewUserService(userR *repository.UserRepository, jwtSecret *auth.JWTSecret)
 	}
 }
 
-func (userS *UserService) Register(ctx context.Context, input models.RegisterInput) (*models.User, error) {
+func (userS *UserService) Register(ctx context.Context, input inputs.RegisterInput) (*models.User, error) {
 	checkEmail, err := userS.UserRepo.EmailExists(ctx, &input.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check an email: %w", err)
@@ -107,7 +108,7 @@ func (userS *UserService) GetUserById(ctx context.Context, id int) (*models.User
 	return user, nil
 }
 
-func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) (*models.User, error) {
+func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) (*models.User, error) {
 	if in.Email != nil {
 		checkEmail, err := userS.UserRepo.EmailExists(ctx, in.Email)
 		if err != nil {

@@ -20,3 +20,7 @@ func UserRoutes(userH *handler.UserHandler, mux *http.ServeMux, jwtSecret *auth.
 	mux.HandleFunc("PATCH /users/update/password/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, userH.UpdateUserPassword)))
 
 }
+
+func TaskRoutes(taskH *handler.TaskHandler, mux *http.ServeMux, jwtSecret *auth.JWTSecret) {
+	mux.HandleFunc("POST /tasks/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, taskH.AddTask)))
+}

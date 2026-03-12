@@ -3,13 +3,14 @@ package repository
 import (
 	"context"
 	"enactus/internal/models"
+	"enactus/internal/models/inputs"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type TaskRepositoryInterface interface {
-	AddTask(ctx context.Context, task *models.Task) error
+	AddTask(ctx context.Context, task *inputs.AddTaskInput) (*models.Task, error)
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
 	UpdateTask(ctx context.Context, id int, newTask models.Task) error
@@ -20,10 +21,15 @@ type TaskRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) error {
+func NewTaskRepo(pool *pgxpool.Pool) *TaskRepository {
+	return &TaskRepository{Pool: pool}
+}
 
-	row := taskRepo.Pool.QueryRow(ctx,
-		"INSERT INTO tasks (title, description, deadline, department_id, creator_id, assignee_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, status, created_at, updated_at, deleted_at",
+func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) (*models.Task, error) {
+	query := `INSERT INTO tasks (title, description, deadline, department_id, creator_id, assignee_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7)
+				RETURNING id, created_at, updated_at, deleted_at`
+
+	row := taskRepo.Pool.QueryRow(ctx, query,
 		task.Title,
 		task.Description,
 		task.Deadline,
@@ -35,17 +41,16 @@ func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) 
 
 	err := row.Scan(
 		&task.Id,
-		&task.Status,
 		&task.CreatedAt,
 		&task.UpdatedAt,
 		&task.DeletedAt,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to add a task: %w", err)
+		return nil, fmt.Errorf("failed to add a task: %w", err)
 	}
 
-	return nil
+	return task, nil
 }
 
 func (taskRepo *TaskRepository) GetTaskById(ctx context.Context, id int) (*models.Task, error) {
@@ -120,7 +125,7 @@ func (taskRepo *TaskRepository) GetAllTasks(ctx context.Context) ([]models.Task,
 	return tasks, nil
 }
 
-func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in models.UpdateTaskInput) error {
+func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) error {
 	row := taskRepo.Pool.QueryRow(ctx,
 		"UPDATE tasks SET title = $1, description = $2, deadline = $3, assignee_id = $4, status = $5, updated_at = now() WHERE id = $6 AND deleted_at IS NULL RETURNING id",
 		in.Title,

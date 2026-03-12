@@ -6,6 +6,8 @@ import (
 	"enactus/internal/httpx"
 	"net/http"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func AuthMiddleware(jwtSecret *auth.JWTSecret, next httpx.AppHandler) httpx.AppHandler {
@@ -29,7 +31,13 @@ func AuthMiddleware(jwtSecret *auth.JWTSecret, next httpx.AppHandler) httpx.AppH
 			return httpx.ValidationError(err)
 		}
 
-		ctx := context.WithValue(r.Context(), "id", token.Claims)
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return httpx.Unauthorized("invalid token claims")
+		}
+
+		userId := int(claims["user_id"].(float64))
+		ctx := context.WithValue(r.Context(), "user_id", userId)
 		return next(w, r.WithContext(ctx))
 	}
 }

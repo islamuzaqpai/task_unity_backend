@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"enactus/internal/models"
+	"enactus/internal/models/inputs"
 	"fmt"
 	"strings"
 
@@ -11,7 +12,7 @@ import (
 
 type UserRepositoryInterface interface {
 	GetUserById(ctx context.Context, id int) (*models.User, error)
-	GetAuthUserByEmail(ctx context.Context, email string) (*models.AuthUser, error)
+	GetAuthUserByEmail(ctx context.Context, email string) (*inputs.AuthUser, error)
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
 	AddUser(ctx context.Context, user *models.User) error
@@ -89,13 +90,13 @@ func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User,
 	return users, nil
 }
 
-func (userRepo *UserRepository) GetAuthUserByEmail(ctx context.Context, email string) (*models.AuthUser, error) {
+func (userRepo *UserRepository) GetAuthUserByEmail(ctx context.Context, email string) (*inputs.AuthUser, error) {
 	row := userRepo.Pool.QueryRow(ctx,
 		"SELECT id, email, password, deleted_at FROM users WHERE email = $1 AND deleted_at IS NULL",
 		email,
 	)
 
-	var authUser models.AuthUser
+	var authUser inputs.AuthUser
 	err := row.Scan(
 		&authUser.Id,
 		&authUser.Email,
@@ -149,7 +150,7 @@ func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) 
 	return nil
 }
 
-func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, in models.UpdateUserProfileInput) error {
+func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) error {
 	query := `UPDATE users SET `
 	args := []any{}
 	i := 1

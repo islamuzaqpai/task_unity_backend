@@ -38,8 +38,13 @@ func Run() {
 	userS := service.NewUserService(userR, &jwtSecret)
 	userH := handler.NewUserHandler(userS)
 
+	taskR := repository.NewTaskRepo(pool)
+	taskS := service.NewTaskService(taskR)
+	taskH := handler.NewTaskHandler(taskS)
+
 	mux := http.NewServeMux()
 	routes.UserRoutes(userH, mux, &jwtSecret)
+	routes.TaskRoutes(taskH, mux, &jwtSecret)
 
 	addr := ":8080"
 	server := &http.Server{
