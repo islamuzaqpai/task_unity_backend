@@ -12,6 +12,7 @@ type TaskServiceInterface interface {
 	AddTask(ctx context.Context, task *models.Task) (*models.Task, error)
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
+	GetAllTasksByAssigneeId(ctx context.Context, creatorId int) ([]models.Task, error)
 	UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) error
 	DeleteTask(ctx context.Context, id int) error
 }
@@ -40,6 +41,15 @@ func (taskS *TaskService) GetAllTasks(ctx context.Context) ([]models.Task, error
 	}
 
 	return tasks, nil
+}
+
+func (taskS *TaskService) GetAllTasksByAssigneeId(ctx context.Context, assigneeId int) ([]models.Task, error) {
+	tasks, err := taskS.TaskRepo.GetAllTasksByAssigneeId(ctx, assigneeId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all tasks: %w", err)
+	}
+
+	return tasks, err
 }
 
 func (taskS *TaskService) GetTaskById(ctx context.Context, id int) (*models.Task, error) {

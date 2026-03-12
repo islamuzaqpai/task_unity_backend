@@ -10,10 +10,11 @@ import (
 )
 
 type TaskRepositoryInterface interface {
-	AddTask(ctx context.Context, task *inputs.AddTaskInput) (*models.Task, error)
+	AddTask(ctx context.Context, task *models.Task) (*models.Task, error)
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
-	UpdateTask(ctx context.Context, id int, newTask models.Task) error
+	GetAllTasksByAssigneeId(ctx context.Context, assigneeId int) ([]models.Task, error)
+	UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) error
 	DeleteTask(ctx context.Context, id int) error
 }
 
@@ -88,7 +89,6 @@ func (taskRepo *TaskRepository) GetAllTasks(ctx context.Context) ([]models.Task,
 	if err != nil {
 		return nil, fmt.Errorf("failed to select all tasks: %w", err)
 	}
-
 	defer rows.Close()
 
 	var tasks []models.Task
@@ -120,6 +120,47 @@ func (taskRepo *TaskRepository) GetAllTasks(ctx context.Context) ([]models.Task,
 	err = rows.Err()
 	if err != nil {
 		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return tasks, nil
+}
+
+func (taskRepo *TaskRepository) GetAllTasksByAssigneeId(ctx context.Context, assigneeId int) ([]models.Task, error) {
+	query := `SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at, deleted_at FROM tasks WHERE deleted_at is null AND assignee_id = $1`
+
+	rows, err := taskRepo.Pool.Query(ctx, query, assigneeId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []models.Task
+	for rows.Next() {
+		var task models.Task
+
+		err = rows.Scan(
+			&task.Id,
+			&task.Title,
+			&task.Description,
+			&task.Deadline,
+			&task.DepartmentId,
+			&task.CreatorId,
+			&task.AssigneeId,
+			&task.Status,
+			&task.CreatedAt,
+			&task.UpdatedAt,
+			&task.DeletedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan: %w", err)
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w", rows.Err())
 	}
 
 	return tasks, nil

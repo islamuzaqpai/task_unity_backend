@@ -11,6 +11,8 @@ import (
 
 type TaskHandlerInterface interface {
 	AddTask(w http.ResponseWriter, r *http.Request) error
+	GetAllTasks(w http.ResponseWriter, r *http.Request) error
+	GetAllTasksByAssigneeId(w http.ResponseWriter, r *http.Request) error
 }
 
 type TaskHandler struct {
@@ -47,5 +49,30 @@ func (taskH *TaskHandler) AddTask(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, addedTask)
+	return nil
+}
+
+func (taskH *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	tasks, err := taskH.TaskS.GetAllTasks(ctx)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, tasks)
+	return nil
+}
+
+func (taskH *TaskHandler) GetAllTasksByAssigneeId(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	userId := r.Context().Value("user_id").(int)
+	tasks, err := taskH.TaskS.GetAllTasksByAssigneeId(ctx, userId)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, tasks)
 	return nil
 }
