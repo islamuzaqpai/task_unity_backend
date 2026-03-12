@@ -13,14 +13,16 @@ func AuthMiddleware(jwtSecret *auth.JWTSecret, next httpx.AppHandler) httpx.AppH
 		tokenStr := r.Header.Get("Authorization")
 
 		if tokenStr == "" {
-			return httpx.BadRequest("invalid token")
+			return httpx.Unauthorized("empty token")
 		}
 
 		const bearerPrefix = "Bearer "
-		tokenStr = strings.TrimSpace(tokenStr)
-		if len(tokenStr) > len(bearerPrefix) && tokenStr[:len(bearerPrefix)] == bearerPrefix {
-			tokenStr = tokenStr[len(bearerPrefix):]
+
+		if !strings.HasPrefix(tokenStr, bearerPrefix) {
+			return httpx.Unauthorized("invalid token format")
 		}
+
+		tokenStr = strings.TrimPrefix(tokenStr, bearerPrefix)
 
 		token, err := jwtSecret.ValidateToken(tokenStr)
 		if err != nil {
