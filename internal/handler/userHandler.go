@@ -16,6 +16,7 @@ type UserHandlerInterface interface {
 	GetUserById(w http.ResponseWriter, r *http.Request) error
 	Login(w http.ResponseWriter, r *http.Request) error
 	UpdateUserProfile(w http.ResponseWriter, r *http.Request) error
+	UpdateUserPassword(w http.ResponseWriter, r *http.Request) error
 }
 
 type UserHandler struct {
@@ -112,5 +113,28 @@ func (userH *UserHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Reque
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, updated)
+	return nil
+}
+func (userH *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return httpx.BadRequest("invalid ID")
+	}
+
+	var req models.UpdatePasswordInput
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return httpx.BadRequest("invalid request body")
+	}
+
+	err = userH.UserService.UpdateUserPassword(ctx, id, req.Password)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, "OK")
 	return nil
 }
