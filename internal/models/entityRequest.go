@@ -38,3 +38,7 @@ type UpdateAttendanceInput struct {
 	Status  string
 	Comment string
 }
+
+type UpdatePasswordInput struct {
+	Password string `json:"password"`
+}
