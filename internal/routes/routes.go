@@ -4,6 +4,7 @@ import (
 	"enactus/internal/auth"
 	"enactus/internal/handler"
 	"enactus/internal/httpx"
+	"enactus/internal/middleware"
 	"net/http"
 )
 
@@ -12,6 +13,9 @@ func UserRoutes(userH *handler.UserHandler, mux *http.ServeMux, jwtSecret *auth.
 	mux.HandleFunc("GET /users", httpx.WrapHandler(userH.GetAllUsers))
 	mux.HandleFunc("GET /users/{id}", httpx.WrapHandler(userH.GetUserById))
 	mux.HandleFunc("POST /users/login", httpx.WrapHandler(userH.Login))
-	mux.HandleFunc("PATCH /users/update/profile/{id}", httpx.WrapHandler(userH.UpdateUserProfile))
+
+	//with middleware
+	mux.HandleFunc("PATCH /users/update/profile/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, userH.UpdateUserProfile)))
+	mux.HandleFunc("PATCH /users/update/password/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, userH.UpdateUserPassword)))
 
 }
