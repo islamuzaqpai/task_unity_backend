@@ -12,11 +12,11 @@ import (
 
 type UserRepositoryInterface interface {
 	GetUserById(ctx context.Context, id int) (*models.User, error)
-	GetAuthUserByEmail(ctx context.Context, email string) (*inputs.AuthUser, error)
-	EmailExists(ctx context.Context, email string) (bool, error)
+	GetAuthUserByEmail(ctx context.Context, email string) (*inputs.AuthUser, string, error)
+	EmailExists(ctx context.Context, email *string) (bool, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
 	AddUser(ctx context.Context, user *models.User) error
-	UpdateUserProfile(ctx context.Context, id int, newUser models.User) error
+	UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) error
 	UpdateUserPassword(ctx context.Context, id int, newPassword string) error
 	DeleteUser(ctx context.Context, id int) error
 }
@@ -90,24 +90,33 @@ func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User,
 	return users, nil
 }
 
-func (userRepo *UserRepository) GetAuthUserByEmail(ctx context.Context, email string) (*inputs.AuthUser, error) {
-	row := userRepo.Pool.QueryRow(ctx,
-		"SELECT id, email, password, deleted_at FROM users WHERE email = $1 AND deleted_at IS NULL",
-		email,
-	)
+func (userRepo *UserRepository) GetAuthUserByEmail(ctx context.Context, email string) (*inputs.AuthUser, string, error) {
+	query := `SELECT users.id, users.email, users.password, users.deleted_at, roles.name
+				FROM users
+				JOIN users_roles ON users.id = users_roles.user_id
+				JOIN roles ON users_roles.role_id = roles.id
+				WHERE users.email = $1 AND users.deleted_at IS NULL`
 
-	var authUser inputs.AuthUser
-	err := row.Scan(
+	var (
+		authUser inputs.AuthUser
+		role     string
+	)
+	err := userRepo.Pool.QueryRow(ctx,
+		query,
+		email,
+	).Scan(
 		&authUser.Id,
 		&authUser.Email,
 		&authUser.Password,
 		&authUser.DeletedAt,
+		&role,
 	)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan a row: %w", err)
+		return nil, "", fmt.Errorf("failed to scan a row: %w", err)
 	}
 
-	return &authUser, nil
+	return &authUser, role, nil
 }
 
 func (userRepo *UserRepository) EmailExists(ctx context.Context, email *string) (bool, error) {
@@ -128,23 +137,32 @@ func (userRepo *UserRepository) EmailExists(ctx context.Context, email *string) 
 }
 
 func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) error {
-	row := userRepo.Pool.QueryRow(ctx,
-		"INSERT INTO users (full_name, email, password, department_id) VALUES ($1, $2, $3, $4) RETURNING id, full_name, email, department_id",
-		user.FullName,
-		user.Email,
-		user.Password,
-		user.DepartmentId,
-	)
+	tx, err := userRepo.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
 
-	err := row.Scan(
+	query := `INSERT INTO users (full_name, email, password, department_id) VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
+	err = tx.QueryRow(ctx, query, user.FullName, user.Email, user.Password, user.DepartmentId).Scan(
 		&user.Id,
-		&user.FullName,
-		&user.Email,
-		&user.DepartmentId,
+		&user.CreatedAt,
+		&user.UpdatedAt,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to add a user: %w", err)
+		return fmt.Errorf("failed to scan user: %w", err)
+	}
+
+	query = `INSERT INTO users_roles (user_id, role_id) VALUES ($1, (SELECT id FROM roles WHERE name = 'user'))`
+	_, err = tx.Exec(ctx, query, user.Id)
+	if err != nil {
+		return fmt.Errorf("failed to add role: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to commit transactions: %w", err)
 	}
 
 	return nil

@@ -37,7 +37,16 @@ func AuthMiddleware(jwtSecret *auth.JWTSecret, next httpx.AppHandler) httpx.AppH
 		}
 
 		userId := int(claims["user_id"].(float64))
+		role, ok := claims["role"].(string)
+		if !ok {
+			return httpx.Unauthorized("role missing in token")
+		}
+
 		ctx := context.WithValue(r.Context(), "user_id", userId)
+		ctx = context.WithValue(ctx, "claims", map[string]interface{}{
+			"user_id": userId,
+			"role":    role,
+		})
 		return next(w, r.WithContext(ctx))
 	}
 }

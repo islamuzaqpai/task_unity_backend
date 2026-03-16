@@ -66,9 +66,10 @@ func (userH *UserHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
+
 	tokenStr, err := userH.UserService.Login(ctx, req.Email, req.Password)
 	if err != nil {
-		return httpx.BadRequest("invalid email or password")
+		return httpx.Unauthorized("invalid email or password")
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": tokenStr})

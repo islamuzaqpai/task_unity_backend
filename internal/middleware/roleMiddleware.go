@@ -6,16 +6,16 @@ import (
 	"net/http"
 )
 
-func RoleMiddleware(next http.Handler, roles ...models.Role) httpx.AppHandler {
+func RoleMiddleware(next httpx.AppHandler, roles ...models.Role) httpx.AppHandler {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		claimsValue := r.Context().Value("claims")
-		if claimsValue == "" {
+		if claimsValue == nil {
 			return httpx.Unauthorized("claims missing")
 		}
 
 		claims, ok := claimsValue.(map[string]interface{})
 		if !ok {
-			return httpx.Unauthorized("invalid claims type")
+			return httpx.Unauthorized("claims missing")
 		}
 
 		roleValue, ok := claims["role"].(string)
@@ -35,7 +35,6 @@ func RoleMiddleware(next http.Handler, roles ...models.Role) httpx.AppHandler {
 			return httpx.Unauthorized("insufficient permissions")
 		}
 
-		next.ServeHTTP(w, r)
-		return nil
+		return next(w, r)
 	}
 }

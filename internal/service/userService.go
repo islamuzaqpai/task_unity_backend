@@ -8,12 +8,13 @@ import (
 	"enactus/internal/repository"
 	"enactus/internal/utils"
 	"fmt"
+	"log"
 	"unicode/utf8"
 )
 
 type UserServiceInterface interface {
 	Register(ctx context.Context, input inputs.RegisterInput) (*models.User, error)
-	Login(ctx context.Context, email, password string) (string, error)
+	Login(ctx context.Context, email, password, role string) (string, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
 	GetUserById(ctx context.Context, id int) (*models.User, error)
 	UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) (*models.User, error)
@@ -68,7 +69,8 @@ func (userS *UserService) Register(ctx context.Context, input inputs.RegisterInp
 }
 
 func (userS *UserService) Login(ctx context.Context, email, password string) (string, error) {
-	authUser, err := userS.UserRepo.GetAuthUserByEmail(ctx, email)
+	authUser, role, err := userS.UserRepo.GetAuthUserByEmail(ctx, email)
+	log.Printf("authUser: %+v, role: %s, err: %v", authUser, role, err)
 	if err != nil {
 		return "", fmt.Errorf("failed to find user with this email: %w", err)
 	}
@@ -82,9 +84,9 @@ func (userS *UserService) Login(ctx context.Context, email, password string) (st
 		return "", fmt.Errorf("invalid password: %w", err)
 	}
 
-	tokenStr, err := userS.JwtSecret.GenerateToken(authUser)
+	tokenStr, err := userS.JwtSecret.GenerateToken(authUser, role)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate a token: %w", err)
+		return "", fmt.Errorf("failed to generate a token")
 	}
 
 	return tokenStr, nil

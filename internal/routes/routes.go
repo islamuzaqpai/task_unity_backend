@@ -5,6 +5,7 @@ import (
 	"enactus/internal/handler"
 	"enactus/internal/httpx"
 	"enactus/internal/middleware"
+	"enactus/internal/models"
 	"net/http"
 )
 
@@ -29,4 +30,9 @@ func TaskRoutes(taskH *handler.TaskHandler, mux *http.ServeMux, jwtSecret *auth.
 
 	mux.HandleFunc("GET /tasks/{id}", httpx.WrapHandler(taskH.GetTaskById))
 	mux.HandleFunc("GET /tasks/", httpx.WrapHandler(taskH.GetAllTasks))
+}
+
+func DepartmentRoutes(departmentH *handler.DepartmentHandler, mux *http.ServeMux, jwtSecret *auth.JWTSecret) {
+	mux.HandleFunc("POST /departments/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(departmentH.AddDepartment, models.Role{Name: "admin"}))))
 }

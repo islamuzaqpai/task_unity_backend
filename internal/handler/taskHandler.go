@@ -36,7 +36,10 @@ func (taskH *TaskHandler) AddTask(w http.ResponseWriter, r *http.Request) error 
 		return httpx.BadRequest("invalid request body")
 	}
 
-	userId := r.Context().Value("user_id").(int)
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
 	task := models.Task{
 		Title:        req.Title,
 		Description:  req.Description,
@@ -71,7 +74,11 @@ func (taskH *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) er
 func (taskH *TaskHandler) GetAllTasksByAssigneeId(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
-	userId := r.Context().Value("user_id").(int)
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
+
 	tasks, err := taskH.TaskS.GetAllTasksByAssigneeId(ctx, userId)
 	if err != nil {
 		return httpx.InternalError(err)
@@ -102,7 +109,10 @@ func (taskH *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) er
 func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
-	userId := r.Context().Value("user_id").(int)
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
 
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
@@ -128,7 +138,10 @@ func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) err
 func (taskH *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
-	userId := r.Context().Value("user_id").(int)
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
 
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)

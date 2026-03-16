@@ -20,6 +20,10 @@ type DepartmentRepository struct {
 	Pool *pgxpool.Pool
 }
 
+func NewDepartmentRepository(pool *pgxpool.Pool) *DepartmentRepository {
+	return &DepartmentRepository{Pool: pool}
+}
+
 func (departmentRepo *DepartmentRepository) AddDepartment(ctx context.Context, department *models.Department) error {
 	row := departmentRepo.Pool.QueryRow(ctx,
 		"INSERT INTO departments (name) VALUES ($1) RETURNING id, created_at, updated_at",

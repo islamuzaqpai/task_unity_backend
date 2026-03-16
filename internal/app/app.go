@@ -42,9 +42,14 @@ func Run() {
 	taskS := service.NewTaskService(taskR)
 	taskH := handler.NewTaskHandler(taskS)
 
+	departmentR := repository.NewDepartmentRepository(pool)
+	departmentS := service.NewDepartmentService(departmentR)
+	departmentH := handler.NewDepartmentHandler(departmentS)
+
 	mux := http.NewServeMux()
 	routes.UserRoutes(userH, mux, &jwtSecret)
 	routes.TaskRoutes(taskH, mux, &jwtSecret)
+	routes.DepartmentRoutes(departmentH, mux, &jwtSecret)
 
 	addr := ":8080"
 	server := &http.Server{
