@@ -74,6 +74,7 @@ func WrapHandler(h AppHandler) http.HandlerFunc {
 
 		var appErr *AppError
 		if errors.As(err, &appErr) {
+			fmt.Printf("Handled error: %+v\n", appErr.Err)
 			WriteJSON(w, appErr.Status, appErr)
 			return
 		}
