@@ -25,5 +25,6 @@ func TaskRoutes(taskH *handler.TaskHandler, mux *http.ServeMux, jwtSecret *auth.
 	mux.HandleFunc("POST /tasks/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, taskH.AddTask)))
 	mux.HandleFunc("GET /tasks/assignee", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, taskH.GetAllTasksByAssigneeId)))
 
+	mux.HandleFunc("GET /tasks/{id}", httpx.WrapHandler(taskH.GetTaskById))
 	mux.HandleFunc("GET /tasks/", httpx.WrapHandler(taskH.GetAllTasks))
 }

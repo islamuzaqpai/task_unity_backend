@@ -84,9 +84,20 @@ func (taskH *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) er
 	ctx := r.Context()
 
 	idStr := r.PathValue("id")
-	id, err := strconv.
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return httpx.BadRequest("invalid task ID")
+	}
+
+	task, err := taskH.TaskS.GetTaskById(ctx, id)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, task)
+	return nil
 }
 
 func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) error {
-
+	return nil
 }
