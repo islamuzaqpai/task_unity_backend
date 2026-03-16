@@ -99,5 +99,27 @@ func (taskH *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) er
 }
 
 func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	userId := r.Context().Value("user_id").(int)
+
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return httpx.BadRequest("invalid task ID")
+	}
+
+	var req inputs.UpdateTaskInput
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return httpx.BadRequest("invalid request body")
+	}
+
+	updated, err := taskH.TaskS.UpdateTask(ctx, userId, id, req)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, updated)
 	return nil
 }

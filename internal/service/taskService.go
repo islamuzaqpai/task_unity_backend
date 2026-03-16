@@ -61,13 +61,22 @@ func (taskS *TaskService) GetTaskById(ctx context.Context, id int) (*models.Task
 	return task, nil
 }
 
-func (taskS *TaskService) UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) error {
-	err := taskS.TaskRepo.UpdateTask(ctx, id, in)
+func (taskS *TaskService) UpdateTask(ctx context.Context, userId, taskId int, in inputs.UpdateTaskInput) (*models.Task, error) {
+	task, err := taskS.GetTaskById(ctx, taskId)
 	if err != nil {
-		return fmt.Errorf("failed to update a task: %w", err)
+		return nil, fmt.Errorf("failed to get task: %w", err)
 	}
 
-	return nil
+	if task.CreatorId != userId {
+		return nil, fmt.Errorf("you cannot update task")
+	}
+
+	updated, err := taskS.TaskRepo.UpdateTask(ctx, taskId, in)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update a task: %w", err)
+	}
+
+	return updated, nil
 }
 
 func (taskS *TaskService) DeleteTask(ctx context.Context, id int) error {

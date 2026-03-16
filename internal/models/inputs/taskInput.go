@@ -10,3 +10,11 @@ type AddTaskInput struct {
 	AssigneeId   int       `json:"assignee_id"`
 	Status       string    `json:"status"`
 }
+
+type UpdateTaskInput struct {
+	Title       *string    `json:"title"`
+	Description *string    `json:"description"`
+	Deadline    *time.Time `json:"deadline"`
+	AssigneeId  *int       `json:"assignee_id"`
+	Status      *string    `json:"status"`
+}

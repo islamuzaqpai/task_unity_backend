@@ -24,6 +24,7 @@ func UserRoutes(userH *handler.UserHandler, mux *http.ServeMux, jwtSecret *auth.
 func TaskRoutes(taskH *handler.TaskHandler, mux *http.ServeMux, jwtSecret *auth.JWTSecret) {
 	mux.HandleFunc("POST /tasks/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, taskH.AddTask)))
 	mux.HandleFunc("GET /tasks/assignee", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, taskH.GetAllTasksByAssigneeId)))
+	mux.HandleFunc("PATCH /tasks/update/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret, taskH.UpdateTask)))
 
 	mux.HandleFunc("GET /tasks/{id}", httpx.WrapHandler(taskH.GetTaskById))
 	mux.HandleFunc("GET /tasks/", httpx.WrapHandler(taskH.GetAllTasks))

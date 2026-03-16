@@ -14,10 +14,9 @@ type TaskRepositoryInterface interface {
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
 	GetAllTasksByAssigneeId(ctx context.Context, assigneeId int) ([]models.Task, error)
-	UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) error
+	UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) (*models.Task, error)
 	DeleteTask(ctx context.Context, id int) error
 }
-
 type TaskRepository struct {
 	Pool *pgxpool.Pool
 }
@@ -166,27 +165,43 @@ func (taskRepo *TaskRepository) GetAllTasksByAssigneeId(ctx context.Context, ass
 	return tasks, nil
 }
 
-func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) error {
-	row := taskRepo.Pool.QueryRow(ctx,
-		"UPDATE tasks SET title = $1, description = $2, deadline = $3, assignee_id = $4, status = $5, updated_at = now() WHERE id = $6 AND deleted_at IS NULL RETURNING id",
+func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) (*models.Task, error) {
+	query := `UPDATE tasks SET title = COALESCE($1, title),
+								description = COALESCE($2, description),
+								deadline = COALESCE($3, deadline),
+								assignee_id = COALESCE($4, assignee_id),
+								status = COALESCE($5::task_status, status),
+								updated_at = NOW()
+				WHERE id = $6 AND deleted_at IS NULL
+				RETURNING id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at, deleted_at`
+
+	var task models.Task
+	err := taskRepo.Pool.QueryRow(ctx, query,
 		in.Title,
 		in.Description,
 		in.Deadline,
 		in.AssigneeId,
 		in.Status,
 		id,
-	)
-
-	var returnedId int
-	err := row.Scan(
-		&returnedId,
+	).Scan(
+		&task.Id,
+		&task.Title,
+		&task.Description,
+		&task.Deadline,
+		&task.DepartmentId,
+		&task.CreatorId,
+		&task.AssigneeId,
+		&task.Status,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+		&task.DeletedAt,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to scan: %w", err)
+		return nil, fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return nil
+	return &task, nil
 }
 
 func (taskRepo *TaskRepository) DeleteTask(ctx context.Context, id int) error {
