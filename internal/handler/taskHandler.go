@@ -16,6 +16,7 @@ type TaskHandlerInterface interface {
 	GetAllTasksByAssigneeId(w http.ResponseWriter, r *http.Request) error
 	GetTaskById(w http.ResponseWriter, r *http.Request) error
 	UpdateTask(w http.ResponseWriter, r *http.Request) error
+	DeleteTask(w http.ResponseWriter, r *http.Request) error
 }
 
 type TaskHandler struct {
@@ -121,5 +122,25 @@ func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) err
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, updated)
+	return nil
+}
+
+func (taskH *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	userId := r.Context().Value("user_id").(int)
+
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return httpx.BadRequest("invalid task ID")
+	}
+
+	err = taskH.TaskS.DeleteTask(ctx, id, userId)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

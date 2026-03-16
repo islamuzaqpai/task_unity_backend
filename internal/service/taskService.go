@@ -79,8 +79,17 @@ func (taskS *TaskService) UpdateTask(ctx context.Context, userId, taskId int, in
 	return updated, nil
 }
 
-func (taskS *TaskService) DeleteTask(ctx context.Context, id int) error {
-	err := taskS.TaskRepo.DeleteTask(ctx, id)
+func (taskS *TaskService) DeleteTask(ctx context.Context, taskId, userId int) error {
+	task, err := taskS.GetTaskById(ctx, taskId)
+	if err != nil {
+		return fmt.Errorf("failed to get task: %w", err)
+	}
+
+	if task.CreatorId != userId {
+		return fmt.Errorf("you cannot update task")
+	}
+
+	err = taskS.TaskRepo.DeleteTask(ctx, taskId)
 	if err != nil {
 		return fmt.Errorf("failed to delete a task: %w", err)
 	}
