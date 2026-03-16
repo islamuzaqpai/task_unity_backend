@@ -19,6 +19,10 @@ type DepartmentService struct {
 	DepartmentRepo *repository.DepartmentRepository
 }
 
+func NewDepartmentService(departmentRepo *repository.DepartmentRepository) *DepartmentService {
+	return &DepartmentService{DepartmentRepo: departmentRepo}
+}
+
 func (departmentS *DepartmentService) AddDepartment(ctx context.Context, department *models.Department) (*models.Department, error) {
 	checkDepartment, err := departmentS.DepartmentRepo.DepartmentExists(ctx, department.Name)
 	if err != nil {

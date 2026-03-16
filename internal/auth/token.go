@@ -13,9 +13,10 @@ type JWTSecret struct {
 	Secret []byte
 }
 
-func (jwtSecret *JWTSecret) GenerateToken(authUser *inputs.AuthUser) (string, error) {
+func (jwtSecret *JWTSecret) GenerateToken(authUser *inputs.AuthUser, roleName string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": authUser.Id,
+		"role":    roleName,
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
 
