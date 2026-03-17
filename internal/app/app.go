@@ -5,6 +5,7 @@ import (
 	"enactus/internal/config"
 	"enactus/internal/database"
 	"enactus/internal/handler"
+	"enactus/internal/middleware"
 	"enactus/internal/repository"
 	"enactus/internal/routes"
 	"enactus/internal/service"
@@ -39,7 +40,7 @@ func Run() {
 	userH := handler.NewUserHandler(userS)
 
 	taskR := repository.NewTaskRepo(pool)
-	taskS := service.NewTaskService(taskR)
+	taskS := service.NewTaskService(taskR, userR)
 	taskH := handler.NewTaskHandler(taskS)
 
 	departmentR := repository.NewDepartmentRepository(pool)
@@ -51,10 +52,11 @@ func Run() {
 	routes.TaskRoutes(taskH, mux, &jwtSecret)
 	routes.DepartmentRoutes(departmentH, mux, &jwtSecret)
 
+	muxWithCors := middleware.CORS(mux)
 	addr := ":8080"
 	server := &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: muxWithCors,
 	}
 
 	log.Fatal(server.ListenAndServe())
