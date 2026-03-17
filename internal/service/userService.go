@@ -2,19 +2,21 @@ package service
 
 import (
 	"context"
+	"enactus/internal/apperrors"
 	"enactus/internal/auth"
+	"enactus/internal/httpx"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"enactus/internal/repository"
 	"enactus/internal/utils"
+	"errors"
 	"fmt"
-	"log"
 	"unicode/utf8"
 )
 
 type UserServiceInterface interface {
 	Register(ctx context.Context, input inputs.RegisterInput) (*models.User, error)
-	Login(ctx context.Context, email, password, role string) (string, error)
+	Login(ctx context.Context, email, password string) (string, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
 	GetUserById(ctx context.Context, id int) (*models.User, error)
 	UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) (*models.User, error)
@@ -37,31 +39,32 @@ func NewUserService(userR *repository.UserRepository, jwtSecret *auth.JWTSecret)
 func (userS *UserService) Register(ctx context.Context, input inputs.RegisterInput) (*models.User, error) {
 	checkEmail, err := userS.UserRepo.EmailExists(ctx, &input.Email)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check an email: %w", err)
+		return nil, fmt.Errorf("failed to check email: %w", err)
 	}
 
 	if checkEmail {
-		return nil, fmt.Errorf("email already exists")
+		return nil, apperrors.ErrEmailAlreadyExists
 	}
 
 	if utf8.RuneCountInString(input.Password) < 8 {
-		return nil, fmt.Errorf("password must be at least 8 characters long")
+		return nil, apperrors.ErrWeakPassword
 	}
 
 	hashedPassword, err := utils.HashPassword(input.Password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash a password: %w", err)
+		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	var user models.User
-	user.FullName = input.FullName
-	user.Email = input.Email
-	user.Password = hashedPassword
-	user.DepartmentId = input.DepartmentId
+	user := models.User{
+		FullName:     input.FullName,
+		Email:        input.Email,
+		Password:     hashedPassword,
+		DepartmentId: input.DepartmentId,
+	}
 
 	err = userS.UserRepo.AddUser(ctx, &user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add an user: %w", err)
+		return nil, fmt.Errorf("failed to add user: %w", err)
 	}
 
 	user.Password = ""
@@ -70,26 +73,28 @@ func (userS *UserService) Register(ctx context.Context, input inputs.RegisterInp
 
 func (userS *UserService) Login(ctx context.Context, email, password string) (string, error) {
 	authUser, role, err := userS.UserRepo.GetAuthUserByEmail(ctx, email)
-	log.Printf("authUser: %+v, role: %s, err: %v", authUser, role, err)
 	if err != nil {
-		return "", fmt.Errorf("failed to find user with this email: %w", err)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return "", apperrors.ErrUnauthorized
+		}
+		return "", fmt.Errorf("failed to find user by email: %w", err)
 	}
 
-	isValid, err := utils.ValidatePassword(password, authUser.Password)
+	valid, err := utils.ValidatePassword(password, authUser.Password)
 	if err != nil {
-		return "", fmt.Errorf("failed to validate a password: %w", err)
+		return "", fmt.Errorf("failed to validate password: %w", err)
 	}
 
-	if !isValid {
-		return "", fmt.Errorf("invalid password: %w", err)
+	if !valid {
+		return "", apperrors.ErrInvalidPassword
 	}
 
-	tokenStr, err := userS.JwtSecret.GenerateToken(authUser, role)
+	token, err := userS.JwtSecret.GenerateToken(authUser, role)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate a token")
+		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	return tokenStr, nil
+	return token, nil
 }
 
 func (userS *UserService) GetAllUsers(ctx context.Context) ([]models.User, error) {
@@ -97,66 +102,78 @@ func (userS *UserService) GetAllUsers(ctx context.Context) ([]models.User, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all users: %w", err)
 	}
-
 	return users, nil
 }
 
 func (userS *UserService) GetUserById(ctx context.Context, id int) (*models.User, error) {
 	user, err := userS.UserRepo.GetUserById(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, httpx.NotFound("user")
+		}
+		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
-
 	return user, nil
 }
 
 func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) (*models.User, error) {
 	if in.Email != nil {
-		checkEmail, err := userS.UserRepo.EmailExists(ctx, in.Email)
+		exists, err := userS.UserRepo.EmailExists(ctx, in.Email)
 		if err != nil {
-			return nil, fmt.Errorf("failed to check an email: %w", err)
+			return nil, fmt.Errorf("failed to check email: %w", err)
 		}
-
-		if checkEmail {
-			return nil, fmt.Errorf("email already exists")
+		if exists {
+			return nil, apperrors.ErrEmailAlreadyExists
 		}
 	}
 
 	err := userS.UserRepo.UpdateUserProfile(ctx, id, in)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, httpx.NotFound("user")
+		}
 		return nil, fmt.Errorf("failed to update user profile: %w", err)
 	}
 
-	updatedUser, err := userS.UserRepo.GetUserById(ctx, id)
+	user, err := userS.UserRepo.GetUserById(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get an user: %w", err)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, httpx.NotFound("user")
+		}
+		return nil, fmt.Errorf("failed to fetch updated user: %w", err)
 	}
 
-	return updatedUser, nil
+	return user, nil
 }
 
 func (userS *UserService) UpdateUserPassword(ctx context.Context, id int, newPassword string) error {
 	if utf8.RuneCountInString(newPassword) < 8 {
-		return fmt.Errorf("password must be at least 8 characters long")
+		return apperrors.ErrWeakPassword
 	}
 
-	hashPassword, err := utils.HashPassword(newPassword)
+	hash, err := utils.HashPassword(newPassword)
 	if err != nil {
-		return fmt.Errorf("failed to hash a password: %w", err)
+		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	err = userS.UserRepo.UpdateUserPassword(ctx, id, hashPassword)
+	err = userS.UserRepo.UpdateUserPassword(ctx, id, hash)
 	if err != nil {
-		return fmt.Errorf("failed to update a password: %w", err)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("user")
+		}
+		return fmt.Errorf("failed to update password: %w", err)
 	}
+
 	return nil
 }
 
 func (userS *UserService) DeleteUser(ctx context.Context, id int) error {
 	err := userS.UserRepo.DeleteUser(ctx, id)
 	if err != nil {
-		return fmt.Errorf("failed to delete an user; %w", err)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("user")
+		}
+		return fmt.Errorf("failed to delete user: %w", err)
 	}
-
 	return nil
 }
