@@ -2,8 +2,11 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,7 +32,7 @@ func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) 
 	query := `INSERT INTO tasks (title, description, deadline, department_id, creator_id, assignee_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7)
 				RETURNING id, created_at, updated_at, deleted_at`
 
-	row := taskRepo.Pool.QueryRow(ctx, query,
+	err := taskRepo.Pool.QueryRow(ctx, query,
 		task.Title,
 		task.Description,
 		task.Deadline,
@@ -37,9 +40,7 @@ func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) 
 		task.CreatorId,
 		task.AssigneeId,
 		task.Status,
-	)
-
-	err := row.Scan(
+	).Scan(
 		&task.Id,
 		&task.CreatedAt,
 		&task.UpdatedAt,
@@ -54,14 +55,9 @@ func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) 
 }
 
 func (taskRepo *TaskRepository) GetTaskById(ctx context.Context, id int) (*models.Task, error) {
-	row := taskRepo.Pool.QueryRow(ctx,
-		"SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at FROM tasks WHERE id = $1 AND deleted_at IS NULL ",
-		id,
-	)
-
+	query := `SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at FROM tasks WHERE id = $1 AND deleted_at IS NULL`
 	var task models.Task
-
-	err := row.Scan(
+	err := taskRepo.Pool.QueryRow(ctx, query, id).Scan(
 		&task.Id,
 		&task.Title,
 		&task.Description,
@@ -75,15 +71,20 @@ func (taskRepo *TaskRepository) GetTaskById(ctx context.Context, id int) (*model
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperrors.ErrNotFound
+		}
+
+		return nil, fmt.Errorf("failed to get task by id: %w", err)
 	}
 
 	return &task, nil
 }
 
 func (taskRepo *TaskRepository) GetAllTasks(ctx context.Context) ([]models.Task, error) {
-	rows, err := taskRepo.Pool.Query(ctx,
-		"SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at, deleted_at FROM tasks WHERE deleted_at is null")
+	query := `SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at, deleted_at FROM tasks WHERE deleted_at is null`
+
+	rows, err := taskRepo.Pool.Query(ctx, query)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to select all tasks: %w", err)
