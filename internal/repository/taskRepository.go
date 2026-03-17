@@ -160,7 +160,7 @@ func (taskRepo *TaskRepository) GetAllTasksByAssigneeId(ctx context.Context, ass
 	}
 
 	if rows.Err() != nil {
-		return nil, fmt.Errorf("%w", rows.Err())
+		return nil, fmt.Errorf("rows iteration error: %w", rows.Err())
 	}
 
 	return tasks, nil

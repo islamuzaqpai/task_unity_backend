@@ -68,7 +68,7 @@ func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User,
 	var users []models.User
 	for rows.Next() {
 		var user models.User
-		if err := rows.Scan(
+		err = rows.Scan(
 			&user.Id,
 			&user.FullName,
 			&user.Email,
@@ -76,13 +76,16 @@ func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 			&user.DeletedAt,
-		); err != nil {
+		)
+
+		if err != nil {
 			return nil, fmt.Errorf("failed to scan user row: %w", err)
 		}
 		users = append(users, user)
 	}
 
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
@@ -183,12 +186,12 @@ func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, i
 	query += fmt.Sprintf(" WHERE id = $%d", i)
 	args = append(args, id)
 
-	cmdTag, err := userRepo.Pool.Exec(ctx, query, args...)
+	result, err := userRepo.Pool.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to update user profile: %w", err)
 	}
 
-	if cmdTag.RowsAffected() == 0 {
+	if result.RowsAffected() == 0 {
 		return apperrors.ErrNotFound
 	}
 
