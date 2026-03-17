@@ -13,19 +13,36 @@ type TaskServiceInterface interface {
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
 	GetAllTasksByAssigneeId(ctx context.Context, creatorId int) ([]models.Task, error)
-	UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) error
-	DeleteTask(ctx context.Context, id int) error
+	UpdateTask(ctx context.Context, userId, taskId int, in inputs.UpdateTaskInput) (*models.Task, error)
+	DeleteTask(ctx context.Context, taskId, userId int) error
 }
 
 type TaskService struct {
 	TaskRepo *repository.TaskRepository
+	UserRepo *repository.UserRepository
 }
 
-func NewTaskService(taskR *repository.TaskRepository) *TaskService {
-	return &TaskService{TaskRepo: taskR}
+func NewTaskService(taskR *repository.TaskRepository, userR *repository.UserRepository) *TaskService {
+	return &TaskService{TaskRepo: taskR, UserRepo: userR}
 }
 
 func (taskS *TaskService) AddTask(ctx context.Context, task *models.Task) (*models.Task, error) {
+	creator, err := taskS.UserRepo.GetUserById(ctx, task.CreatorId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	assignee, err := taskS.UserRepo.GetUserById(ctx, task.AssigneeId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if *creator.DepartmentId != *assignee.DepartmentId {
+		return nil, fmt.Errorf("creator and assignee must be in the same department")
+	}
+
+	task.DepartmentId = *creator.DepartmentId
+
 	addedTask, err := taskS.TaskRepo.AddTask(ctx, task)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add a task: %w", err)

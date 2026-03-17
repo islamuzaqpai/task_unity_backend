@@ -41,13 +41,12 @@ func (taskH *TaskHandler) AddTask(w http.ResponseWriter, r *http.Request) error 
 		return httpx.Unauthorized("user_id missing")
 	}
 	task := models.Task{
-		Title:        req.Title,
-		Description:  req.Description,
-		Deadline:     req.Deadline,
-		DepartmentId: req.DepartmentId,
-		CreatorId:    userId,
-		AssigneeId:   req.AssigneeId,
-		Status:       req.Status,
+		Title:       req.Title,
+		Description: req.Description,
+		Deadline:    req.Deadline,
+		CreatorId:   userId,
+		AssigneeId:  req.AssigneeId,
+		Status:      req.Status,
 	}
 
 	addedTask, err := taskH.TaskS.AddTask(ctx, &task)
