@@ -60,6 +60,7 @@ create type attendance_status as enum ('present', 'absent', 'excused');
 
 create table attendance (
                             id serial primary key,
+                            date timestamp,
                             user_id int references users(id) on delete cascade,
                             department_id int references departments(id) on delete set null,
                             status attendance_status default null,
