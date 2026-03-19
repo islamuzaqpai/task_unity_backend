@@ -38,4 +38,5 @@ func TaskRoutes(taskH *handler.TaskHandler, mux *http.ServeMux, jwtSecret *auth.
 func DepartmentRoutes(departmentH *handler.DepartmentHandler, mux *http.ServeMux, jwtSecret *auth.JWTSecret) {
 	mux.HandleFunc("POST /departments/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
 		middleware.RoleMiddleware(departmentH.AddDepartment, models.Role{Name: "admin"}))))
+	mux.HandleFunc("GET /departments/", httpx.WrapHandler(departmentH.GetAllDepartments))
 }

@@ -10,6 +10,7 @@ import (
 
 type DepartmentHandlerInterface interface {
 	AddDepartment(w http.ResponseWriter, r *http.Request) error
+	GetAllDepartments(w http.ResponseWriter, r *http.Request) error
 }
 
 type DepartmentHandler struct {
@@ -35,5 +36,17 @@ func (departmentH *DepartmentHandler) AddDepartment(w http.ResponseWriter, r *ht
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, added)
+	return nil
+}
+
+func (departmentH *DepartmentHandler) GetAllDepartments(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	departments, err := departmentH.DepartmentS.GetAllDepartments(ctx)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, departments)
 	return nil
 }
