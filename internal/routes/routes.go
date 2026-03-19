@@ -39,3 +39,14 @@ func DepartmentRoutes(departmentH *handler.DepartmentHandler, mux *http.ServeMux
 	mux.HandleFunc("POST /departments/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
 		middleware.RoleMiddleware(departmentH.AddDepartment, models.Role{Name: "admin"}))))
 }
+
+func AttendanceRoutes(attendanceH *handler.AttendanceHandler, mux *http.ServeMux, jwtSecret *auth.JWTSecret) {
+	mux.HandleFunc("POST /attendances/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceH.AddAttendance, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	mux.HandleFunc("GET /attendances", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceH.GetAllAttendances, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	mux.HandleFunc("PATCH /attendances/update/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceH.UpdateAttendance, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+}

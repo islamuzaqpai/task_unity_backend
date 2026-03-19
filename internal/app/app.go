@@ -47,10 +47,15 @@ func Run() {
 	departmentS := service.NewDepartmentService(departmentR)
 	departmentH := handler.NewDepartmentHandler(departmentS)
 
+	attendanceR := repository.NewAttendanceRepository(pool)
+	attendanceS := service.NewAttendanceService(attendanceR, userS)
+	attendanceH := handler.NewAttendanceHandler(attendanceS)
+
 	mux := http.NewServeMux()
 	routes.UserRoutes(userH, mux, &jwtSecret)
 	routes.TaskRoutes(taskH, mux, &jwtSecret)
 	routes.DepartmentRoutes(departmentH, mux, &jwtSecret)
+	routes.AttendanceRoutes(attendanceH, mux, &jwtSecret)
 
 	muxWithCors := middleware.CORS(mux)
 	addr := ":8080"

@@ -183,12 +183,12 @@ func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, i
 	query += fmt.Sprintf(" WHERE id = $%d", i)
 	args = append(args, id)
 
-	cmdTag, err := userRepo.Pool.Exec(ctx, query, args...)
+	result, err := userRepo.Pool.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to update user profile: %w", err)
 	}
 
-	if cmdTag.RowsAffected() == 0 {
+	if result.RowsAffected() == 0 {
 		return apperrors.ErrNotFound
 	}
 

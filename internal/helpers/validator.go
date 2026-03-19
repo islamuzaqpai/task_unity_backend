@@ -2,10 +2,10 @@ package helpers
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"reflect"
 	"strings"
+
+	"github.com/go-playground/validator/v10"
 )
 
 func NewValidator() *validator.Validate {
@@ -17,18 +17,11 @@ func NewValidator() *validator.Validate {
 		}
 		return name
 	})
-
 	return v
 }
 
-func Validate(c *gin.Context, req interface{}) map[string][]string {
-	val, exists := c.Get("validate")
-	if !exists {
-		return map[string][]string{"error": {"validator is not initialized"}}
-	}
-
-	v, ok := val.(*validator.Validate)
-	if !ok || v == nil {
+func Validate(req interface{}, v *validator.Validate) map[string][]string {
+	if v == nil {
 		return map[string][]string{"error": {"validator is not initialized"}}
 	}
 
@@ -42,7 +35,7 @@ func Validate(c *gin.Context, req interface{}) map[string][]string {
 			errs := v.Struct(item)
 			if errs != nil {
 				for _, err := range errs.(validator.ValidationErrors) {
-					fieldKey := fmt.Sprintf("answers.%d.%s", i, err.Field())
+					fieldKey := fmt.Sprintf("items.%d.%s", i, err.Field())
 					errors[fieldKey] = append(errors[fieldKey], getErrorMessage(err))
 				}
 			}
@@ -72,6 +65,8 @@ func getErrorMessage(err validator.FieldError) string {
 		return fmt.Sprintf("Field '%s' must be at most %s characters", err.Field(), err.Param())
 	case "email":
 		return fmt.Sprintf("Field '%s' must be a valid email", err.Field())
+	case "oneof":
+		return fmt.Sprintf("Field '%s' must be one of [%s]", err.Field(), err.Param())
 	default:
 		return fmt.Sprintf("Field '%s' is invalid", err.Field())
 	}

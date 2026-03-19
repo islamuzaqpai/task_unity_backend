@@ -2,9 +2,12 @@ package service
 
 import (
 	"context"
+	"enactus/internal/apperrors"
+	"enactus/internal/httpx"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"enactus/internal/repository"
+	"errors"
 	"fmt"
 )
 
@@ -18,15 +21,48 @@ type AttendanceServiceInterface interface {
 
 type AttendanceService struct {
 	AttendanceRepo *repository.AttendanceRepository
+	UserS          *UserService
 }
 
-func (attendanceS *AttendanceService) AddAttendance(ctx context.Context, attendance *models.Attendance) (*models.Attendance, error) {
-	err := attendanceS.AttendanceRepo.AddAttendance(ctx, attendance)
+func NewAttendanceService(attendanceR *repository.AttendanceRepository, userS *UserService) *AttendanceService {
+	return &AttendanceService{
+		AttendanceRepo: attendanceR,
+		UserS:          userS,
+	}
+}
+
+func (attendanceS *AttendanceService) AddAttendance(ctx context.Context, in *inputs.AddAttendanceInput) (*models.Attendance, error) {
+	creatorUser, err := attendanceS.UserS.GetUserById(ctx, in.Creator)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, httpx.NotFound("user")
+		}
+	}
+
+	user, err := attendanceS.UserS.GetUserById(ctx, in.UserId)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, httpx.NotFound("user")
+		}
+	}
+
+	if creatorUser.DepartmentId != user.DepartmentId {
+		return nil, fmt.Errorf("creator user and user must be in the same department")
+	}
+
+	attendance := models.Attendance{
+		Date:         in.Date,
+		UserId:       in.UserId,
+		DepartmentId: user.DepartmentId,
+		Comment:      in.Comment,
+	}
+
+	err = attendanceS.AttendanceRepo.AddAttendance(ctx, &attendance)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add an attendance: %w", err)
 	}
 
-	return attendance, nil
+	return &attendance, nil
 }
 
 func (attendanceS *AttendanceService) GetAllAttendances(ctx context.Context) ([]models.Attendance, error) {
