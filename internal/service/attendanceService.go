@@ -44,9 +44,11 @@ func (attendanceS *AttendanceService) AddAttendance(ctx context.Context, in *inp
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return nil, httpx.NotFound("user")
 		}
+
+		return nil, fmt.Errorf("failed to get creator user: %w", err)
 	}
 
-	if creatorUser.DepartmentId != user.DepartmentId {
+	if *creatorUser.DepartmentId != *user.DepartmentId {
 		return nil, fmt.Errorf("creator user and user must be in the same department")
 	}
 

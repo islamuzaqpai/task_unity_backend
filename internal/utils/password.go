@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -20,6 +21,10 @@ func HashPassword(password string) (string, error) {
 func ValidatePassword(password, hashedPassword string) (bool, error) {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return false, nil
+		}
+
 		return false, fmt.Errorf("failed to validate passwords: %w", err)
 	}
 

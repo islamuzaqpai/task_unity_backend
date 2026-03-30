@@ -50,4 +50,7 @@ func AttendanceRoutes(attendanceH *handler.AttendanceHandler, mux *http.ServeMux
 
 	mux.HandleFunc("PATCH /attendances/update/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
 		middleware.RoleMiddleware(attendanceH.UpdateAttendance, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	mux.HandleFunc("DELETE /attendances/delete/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceH.DeleteAttendance, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
 }

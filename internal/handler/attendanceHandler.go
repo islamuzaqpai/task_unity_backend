@@ -14,6 +14,7 @@ type AttendanceHandlerInterface interface {
 	AddAttendance(w http.ResponseWriter, r *http.Request) error
 	GetAllAttendances(w http.ResponseWriter, r *http.Request) error
 	UpdateAttendance(w http.ResponseWriter, r *http.Request) error
+	DeleteAttendance(w http.ResponseWriter, r *http.Request) error
 }
 
 type AttendanceHandler struct {
@@ -94,5 +95,23 @@ func (attendanceH *AttendanceHandler) UpdateAttendance(w http.ResponseWriter, r 
 	}
 
 	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+func (attendanceH *AttendanceHandler) DeleteAttendance(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return httpx.BadRequest("invalid id")
+	}
+
+	err = attendanceH.AttendanceS.DeleteAttendance(ctx, id)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	httpx.WriteJSON(w, http.StatusNoContent, nil)
 	return nil
 }
