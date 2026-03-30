@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"enactus/internal/apperrors"
 	"enactus/internal/httpx"
 	"enactus/internal/models/inputs"
 	"enactus/internal/service"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -39,6 +41,10 @@ func (userH UserHandler) Register(w http.ResponseWriter, r *http.Request) error 
 
 	user, err := userH.UserService.Register(ctx, req)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrEmailAlreadyExists) {
+			return httpx.UserAlreadyExists()
+		}
+
 		log.Printf("failed to add user: %v", err)
 		return httpx.InternalError(err)
 	}

@@ -63,6 +63,15 @@ func Unauthorized(message string) *AppError {
 	}
 }
 
+func UserAlreadyExists() *AppError {
+	return &AppError{
+		Code:    "USER_ALREADY_EXISTS",
+		Message: "user already exists",
+		Status:  http.StatusConflict, // 409
+		Err:     nil,
+	}
+}
+
 type AppHandler func(w http.ResponseWriter, r *http.Request) error
 
 func WrapHandler(h AppHandler) http.HandlerFunc {
