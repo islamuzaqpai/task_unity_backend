@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"enactus/internal/apperrors"
+	"enactus/internal/helpers"
 	"enactus/internal/httpx"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"enactus/internal/service"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 )
@@ -40,6 +43,13 @@ func (taskH *TaskHandler) AddTask(w http.ResponseWriter, r *http.Request) error 
 	if !ok {
 		return httpx.Unauthorized("user_id missing")
 	}
+
+	v := helpers.NewValidator()
+	errs := helpers.Validate(req, v)
+	if errs != nil {
+		return httpx.BadRequestValidation(errs)
+	}
+
 	task := models.Task{
 		Title:       req.Title,
 		Description: req.Description,
@@ -51,6 +61,14 @@ func (taskH *TaskHandler) AddTask(w http.ResponseWriter, r *http.Request) error 
 
 	addedTask, err := taskH.TaskS.AddTask(ctx, &task)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrCreatorNotFound) {
+			return httpx.NotFound("creator user")
+		}
+
+		if errors.Is(err, apperrors.ErrAssigneeNotFound) {
+			return httpx.NotFound("assignee user")
+		}
+
 		return httpx.InternalError(err)
 	}
 
@@ -123,6 +141,12 @@ func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) err
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return httpx.BadRequest("invalid request body")
+	}
+
+	v := helpers.NewValidator()
+	errors := helpers.Validate(req, v)
+	if errors != nil {
+		return httpx.BadRequest("invalid status")
 	}
 
 	updated, err := taskH.TaskS.UpdateTask(ctx, userId, id, req)

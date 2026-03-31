@@ -6,7 +6,6 @@ create table departments (
                              deleted_at timestamp
 );
 
-
 create table users (
                        id serial primary key,
                        full_name text not null,
@@ -30,8 +29,6 @@ create table users_roles (
                              role_id int references roles(id)
 );
 
-create type task_status as enum ('todo', 'in_progress', 'done');
-
 create table tasks (
                        id serial primary key,
                        title text not null,
@@ -53,10 +50,8 @@ create table tasks_comments (
                                 updated_at timestamp default now(),
                                 deleted_at timestamp,
                                 task_id int references tasks(id) on delete cascade ,
-                                user_id int references users(id) on delete set null
+                                creator_id int references users(id) on delete set null
 );
-
-create type attendance_status as enum ('present', 'absent', 'excused');
 
 create table attendance (
                             id serial primary key,

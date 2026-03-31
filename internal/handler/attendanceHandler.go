@@ -84,9 +84,9 @@ func (attendanceH *AttendanceHandler) UpdateAttendance(w http.ResponseWriter, r 
 	req.MarkedBy = &userId
 
 	v := helpers.NewValidator()
-	errors := helpers.Validate(req, v)
-	if errors != nil {
-		return httpx.BadRequest("invalid status")
+	errs := helpers.Validate(req, v)
+	if errs != nil {
+		return httpx.BadRequestValidation(errs)
 	}
 
 	err = attendanceH.AttendanceS.UpdateAttendance(ctx, id, &req)

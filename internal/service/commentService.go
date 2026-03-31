@@ -2,13 +2,16 @@ package service
 
 import (
 	"context"
+	"enactus/internal/apperrors"
 	"enactus/internal/models"
+	"enactus/internal/models/inputs"
 	"enactus/internal/repository"
+	"errors"
 	"fmt"
 )
 
 type CommentServiceInterface interface {
-	AddComment(ctx context.Context, comment *models.Comment) (*models.Comment, error)
+	AddComment(ctx context.Context, in *inputs.AddCommentInput) (*models.Comment, error)
 	GetAllComments(ctx context.Context) ([]models.Comment, error)
 	GetCommentById(ctx context.Context, id int) (*models.Comment, error)
 	UpdateComment(ctx context.Context, id int, description string) error
@@ -17,15 +20,39 @@ type CommentServiceInterface interface {
 
 type CommentService struct {
 	CommentRepo *repository.CommentRepository
+	TaskS       *TaskService
 }
 
-func (commentS *CommentService) AddComment(ctx context.Context, comment *models.Comment) (*models.Comment, error) {
-	err := commentS.CommentRepo.AddComment(ctx, comment)
+func NewCommentService(commentRepo *repository.CommentRepository, taskS *TaskService) *CommentService {
+	return &CommentService{CommentRepo: commentRepo, TaskS: taskS}
+}
+
+func (commentS *CommentService) AddComment(ctx context.Context, in *inputs.AddCommentInput) (*models.Comment, error) {
+	task, err := commentS.TaskS.GetTaskById(ctx, in.TaskId)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrNotFound
+		}
+
+		return nil, fmt.Errorf("failed to get task by id: %w", err)
+	}
+
+	if in.TaskId != task.Id {
+		return nil, fmt.Errorf("task ids must match")
+	}
+
+	comment := models.Comment{
+		Comment:   in.Comment,
+		TaskId:    in.TaskId,
+		CreatorId: in.CreatorId,
+	}
+
+	added, err := commentS.CommentRepo.AddComment(ctx, &comment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add a comment: %w", err)
 	}
 
-	return comment, nil
+	return added, nil
 }
 
 func (commentS *CommentService) GetAllComments(ctx context.Context) ([]models.Comment, error) {

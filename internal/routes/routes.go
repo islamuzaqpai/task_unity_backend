@@ -54,3 +54,10 @@ func AttendanceRoutes(attendanceH *handler.AttendanceHandler, mux *http.ServeMux
 	mux.HandleFunc("DELETE /attendances/delete/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
 		middleware.RoleMiddleware(attendanceH.DeleteAttendance, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
 }
+
+func CommentRoutes(commentH *handler.CommentHandler, mux *http.ServeMux, jwtSecret *auth.JWTSecret) {
+	mux.HandleFunc("POST /comments/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(commentH.AddComment, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	mux.HandleFunc("GET /comments", httpx.WrapHandler(commentH.GetAllComments))
+}

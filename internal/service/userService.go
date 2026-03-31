@@ -4,7 +4,6 @@ import (
 	"context"
 	"enactus/internal/apperrors"
 	"enactus/internal/auth"
-	"enactus/internal/httpx"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"enactus/internal/repository"
@@ -86,7 +85,7 @@ func (userS *UserService) Login(ctx context.Context, email, password string) (st
 	}
 
 	if !valid {
-		return "", apperrors.ErrInvalidPassword
+		return "", apperrors.ErrUnauthorized
 	}
 
 	token, err := userS.JwtSecret.GenerateToken(authUser, role)
@@ -109,7 +108,7 @@ func (userS *UserService) GetUserById(ctx context.Context, id int) (*models.User
 	user, err := userS.UserRepo.GetUserById(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, httpx.NotFound("user")
+			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
@@ -130,7 +129,7 @@ func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in inpu
 	err := userS.UserRepo.UpdateUserProfile(ctx, id, in)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, httpx.NotFound("user")
+			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to update user profile: %w", err)
 	}
@@ -138,7 +137,7 @@ func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in inpu
 	user, err := userS.UserRepo.GetUserById(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, httpx.NotFound("user")
+			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to fetch updated user: %w", err)
 	}
@@ -159,7 +158,7 @@ func (userS *UserService) UpdateUserPassword(ctx context.Context, id int, newPas
 	err = userS.UserRepo.UpdateUserPassword(ctx, id, hash)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			return httpx.NotFound("user")
+			return apperrors.ErrNotFound
 		}
 		return fmt.Errorf("failed to update password: %w", err)
 	}
@@ -171,7 +170,7 @@ func (userS *UserService) DeleteUser(ctx context.Context, id int) error {
 	err := userS.UserRepo.DeleteUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			return httpx.NotFound("user")
+			return apperrors.ErrNotFound
 		}
 		return fmt.Errorf("failed to delete user: %w", err)
 	}

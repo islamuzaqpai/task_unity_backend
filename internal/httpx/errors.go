@@ -72,6 +72,18 @@ func UserAlreadyExists() *AppError {
 	}
 }
 
+type ValidatorError struct {
+	Errors map[string][]string `json:"errors"`
+}
+
+func (e *ValidatorError) Error() string {
+	return "validation failed"
+}
+
+func BadRequestValidation(errors map[string][]string) error {
+	return &ValidatorError{Errors: errors}
+}
+
 type AppHandler func(w http.ResponseWriter, r *http.Request) error
 
 func WrapHandler(h AppHandler) http.HandlerFunc {
@@ -85,6 +97,12 @@ func WrapHandler(h AppHandler) http.HandlerFunc {
 		if errors.As(err, &appErr) {
 			fmt.Printf("Handled error: %+v\n", appErr.Err)
 			WriteJSON(w, appErr.Status, appErr)
+			return
+		}
+
+		var validatorErr *ValidatorError
+		if errors.As(err, &validatorErr) {
+			WriteJSON(w, http.StatusBadRequest, validatorErr)
 			return
 		}
 

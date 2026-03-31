@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"enactus/internal/repository"
+	"errors"
 	"fmt"
 )
 
@@ -29,11 +31,17 @@ func NewTaskService(taskR *repository.TaskRepository, userR *repository.UserRepo
 func (taskS *TaskService) AddTask(ctx context.Context, task *models.Task) (*models.Task, error) {
 	creator, err := taskS.UserRepo.GetUserById(ctx, task.CreatorId)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrCreatorNotFound
+		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
 	assignee, err := taskS.UserRepo.GetUserById(ctx, task.AssigneeId)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrAssigneeNotFound
+		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 

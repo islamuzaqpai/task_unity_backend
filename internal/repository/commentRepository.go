@@ -9,7 +9,7 @@ import (
 )
 
 type CommentRepositoryInterface interface {
-	AddComment(ctx context.Context, comment *models.Comment) error
+	AddComment(ctx context.Context, comment *models.Comment) (*models.Comment, error)
 	GetCommentById(ctx context.Context, id int) (*models.Comment, error)
 	GetAllComments(ctx context.Context) ([]models.Comment, error)
 	UpdateComment(ctx context.Context, id int, newComment models.Comment) error
@@ -20,39 +20,42 @@ type CommentRepository struct {
 	Pool *pgxpool.Pool
 }
 
-func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *models.Comment) error {
-	row := commentRepo.Pool.QueryRow(ctx,
-		"INSERT INTO comments (description, task_id, user_id) VALUES ($1, $2, $3) RETURNING id, created_at, updated_at",
-		comment.Description,
-		comment.TaskId,
-		comment.UserId,
-	)
+func NewCommentRepository(pool *pgxpool.Pool) *CommentRepository {
+	return &CommentRepository{Pool: pool}
+}
 
-	err := row.Scan(
+func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *models.Comment) (*models.Comment, error) {
+	query := `INSERT INTO tasks_comments (comment, task_id, creator_id) VALUES ($1, $2, $3) RETURNING id, created_at, updated_at`
+
+	err := commentRepo.Pool.QueryRow(ctx, query,
+		comment.Comment,
+		comment.TaskId,
+		comment.CreatorId,
+	).Scan(
 		&comment.Id,
 		&comment.CreatedAt,
 		&comment.UpdatedAt,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to scan: %w", err)
+		return nil, fmt.Errorf("failed to scan: %w", err)
 	}
 
-	return nil
+	return comment, nil
 }
 
 func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int) (*models.Comment, error) {
 	row := commentRepo.Pool.QueryRow(ctx,
-		"SELECT id, description, task_id, user_id, created_at, updated_at, deleted_at FROM comments WHERE id = $1 AND deleted_at IS NULL",
+		"SELECT id, comment, task_id, creator_id, created_at, updated_at, deleted_at FROM tasks_comments WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 
 	var comment models.Comment
 	err := row.Scan(
 		&comment.Id,
-		&comment.Description,
+		&comment.Comment,
 		&comment.TaskId,
-		&comment.UserId,
+		&comment.CreatorId,
 		&comment.CreatedAt,
 		&comment.UpdatedAt,
 		&comment.DeletedAt,
@@ -67,7 +70,7 @@ func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int
 
 func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]models.Comment, error) {
 	rows, err := commentRepo.Pool.Query(ctx,
-		"SELECT id, description, task_id, user_id, created_at, updated_at FROM comments WHERE deleted_at IS NULL",
+		"SELECT id, comment, task_id, creator_id, created_at, updated_at FROM tasks_comments WHERE deleted_at IS NULL",
 	)
 
 	if err != nil {
@@ -82,9 +85,9 @@ func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]mod
 
 		err = rows.Scan(
 			&comment.Id,
-			&comment.Description,
+			&comment.Comment,
 			&comment.TaskId,
-			&comment.UserId,
+			&comment.CreatorId,
 			&comment.CreatedAt,
 			&comment.UpdatedAt,
 		)
@@ -104,10 +107,10 @@ func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]mod
 	return comments, nil
 }
 
-func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, description string) error {
+func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, comment string) error {
 	row := commentRepo.Pool.QueryRow(ctx,
-		"UPDATE comments SET description = $1, updated_at = now() WHERE id = $2 AND deleted_at IS NULL RETURNING id",
-		description,
+		"UPDATE tasks_comments SET comment = $1, updated_at = now() WHERE id = $2 AND deleted_at IS NULL RETURNING id",
+		comment,
 		id,
 	)
 
@@ -125,7 +128,7 @@ func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int,
 
 func (commentRepo *CommentRepository) DeleteComment(ctx context.Context, id int) error {
 	_, err := commentRepo.Pool.Exec(ctx,
-		"UPDATE comments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
+		"UPDATE tasks_comments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
 

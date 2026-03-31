@@ -88,6 +88,10 @@ func (attendanceS *AttendanceService) GetAttendanceById(ctx context.Context, id 
 func (attendanceS *AttendanceService) UpdateAttendance(ctx context.Context, id int, in *inputs.UpdateAttendanceInput) error {
 	err := attendanceS.AttendanceRepo.UpdateAttendance(ctx, id, in)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return apperrors.ErrNotFound
+		}
+
 		return fmt.Errorf("failed to update an attendance: %w", err)
 	}
 
