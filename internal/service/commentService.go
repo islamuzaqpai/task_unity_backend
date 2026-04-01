@@ -73,9 +73,26 @@ func (commentS *CommentService) GetCommentById(ctx context.Context, id int) (*mo
 	return comment, err
 }
 
-func (commentS *CommentService) UpdateComment(ctx context.Context, id int, description string) error {
-	err := commentS.CommentRepo.UpdateComment(ctx, id, description)
+func (commentS *CommentService) UpdateComment(ctx context.Context, id int, in inputs.UpdateCommentInput) error {
+	comment, err := commentS.CommentRepo.GetCommentById(ctx, id)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return apperrors.ErrNotFound
+		}
+
+		return fmt.Errorf("failed to get comment by id: %w", err)
+	}
+
+	if comment.CreatorId != in.UserId {
+		return fmt.Errorf("user is not the owner of the comment")
+	}
+
+	err = commentS.CommentRepo.UpdateComment(ctx, id, in.Comment)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return apperrors.ErrNotFound
+		}
+
 		return fmt.Errorf("failed to update a comment: %w", err)
 	}
 

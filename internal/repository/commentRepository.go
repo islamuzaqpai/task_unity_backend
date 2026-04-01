@@ -2,7 +2,10 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"enactus/internal/apperrors"
 	"enactus/internal/models"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -120,6 +123,9 @@ func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int,
 	)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperrors.ErrNotFound
+		}
 		return fmt.Errorf("failed to scan: %w", err)
 	}
 

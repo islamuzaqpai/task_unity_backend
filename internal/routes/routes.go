@@ -60,4 +60,7 @@ func CommentRoutes(commentH *handler.CommentHandler, mux *http.ServeMux, jwtSecr
 		middleware.RoleMiddleware(commentH.AddComment, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
 
 	mux.HandleFunc("GET /comments", httpx.WrapHandler(commentH.GetAllComments))
+
+	mux.HandleFunc("PUT /comments/update/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(commentH.UpdateComment, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
 }

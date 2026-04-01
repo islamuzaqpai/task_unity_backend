@@ -5,3 +5,9 @@ type AddCommentInput struct {
 	TaskId    int    `json:"task_id" db:"task_id"`
 	CreatorId int    `json:"-"`
 }
+
+type UpdateCommentInput struct {
+	Comment string `json:"comment"`
+	UserId  int    `json:"-"`
+	TaskId  int    `json:"-"`
+}
