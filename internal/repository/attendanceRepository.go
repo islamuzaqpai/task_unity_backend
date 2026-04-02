@@ -2,9 +2,11 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -53,25 +55,26 @@ func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, a
 }
 
 func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error) {
-	row := attendanceRepo.Pool.QueryRow(ctx,
-		"SELECT id, date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE id = $1 AND deleted_at IS NULL",
-		id,
-	)
+	query := `SELECT id, date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE id = $1 AND deleted_at IS NULL`
 
 	var attendance models.Attendance
-	err := row.Scan(
-		&attendance.Id,
-		&attendance.Date,
-		&attendance.UserId,
-		&attendance.DepartmentId,
-		&attendance.Status,
-		&attendance.Comment,
-		&attendance.MarkedBy,
-		&attendance.CreatedAt,
-		&attendance.UpdatedAt,
-	)
+	err := attendanceRepo.Pool.QueryRow(ctx, query, id).
+		Scan(
+			&attendance.Id,
+			&attendance.Date,
+			&attendance.UserId,
+			&attendance.DepartmentId,
+			&attendance.Status,
+			&attendance.Comment,
+			&attendance.MarkedBy,
+			&attendance.CreatedAt,
+			&attendance.UpdatedAt,
+		)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperrors.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to scan: %w", err)
 	}
 
@@ -79,8 +82,9 @@ func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Contex
 }
 
 func (attendanceRepo *AttendanceRepository) GetAllAttendances(ctx context.Context) ([]models.Attendance, error) {
-	rows, err := attendanceRepo.Pool.Query(ctx,
-		"SELECT id, date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE deleted_at is null")
+	query := `SELECT id, date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE deleted_at is null`
+
+	rows, err := attendanceRepo.Pool.Query(ctx, query)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all attendances: %w", err)
@@ -162,9 +166,13 @@ func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context
 }
 
 func (attendanceRepo *AttendanceRepository) DeleteAttendance(ctx context.Context, id int) error {
-	_, err := attendanceRepo.Pool.Exec(ctx,
-		"UPDATE attendance SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
-		id)
+	query := `UPDATE attendance SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
+
+	res, err := attendanceRepo.Pool.Exec(ctx, query, id)
+
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to delete an attendance: %w", err)
