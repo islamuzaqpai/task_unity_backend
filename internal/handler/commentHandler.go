@@ -15,6 +15,7 @@ type CommentHandlerInterface interface {
 	AddComment(w http.ResponseWriter, r *http.Request) error
 	GetAllComments(w http.ResponseWriter, r *http.Request) error
 	UpdateComment(w http.ResponseWriter, r *http.Request) error
+	DeleteComment(w http.ResponseWriter, r *http.Request) error
 }
 
 type CommentHandler struct {
@@ -100,5 +101,34 @@ func (commentH *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Req
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, "ok")
+	return nil
+}
+
+func (commentH *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+
+	ctx := r.Context()
+
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return httpx.BadRequest("invalid ID")
+	}
+
+	userId, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		return httpx.BadRequest("user_id missing")
+	}
+
+	err = commentH.CommentS.DeleteComment(ctx, userId, id)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("comment")
+		}
+
+		return httpx.InternalError(err)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

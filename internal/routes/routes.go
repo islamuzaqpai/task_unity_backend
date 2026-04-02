@@ -63,4 +63,7 @@ func CommentRoutes(commentH *handler.CommentHandler, mux *http.ServeMux, jwtSecr
 
 	mux.HandleFunc("PUT /comments/update/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
 		middleware.RoleMiddleware(commentH.UpdateComment, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	mux.HandleFunc("DELETE /comments/delete/{id}", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(commentH.DeleteComment, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
 }

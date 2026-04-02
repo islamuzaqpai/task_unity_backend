@@ -14,8 +14,8 @@ type CommentServiceInterface interface {
 	AddComment(ctx context.Context, in *inputs.AddCommentInput) (*models.Comment, error)
 	GetAllComments(ctx context.Context) ([]models.Comment, error)
 	GetCommentById(ctx context.Context, id int) (*models.Comment, error)
-	UpdateComment(ctx context.Context, id int, description string) error
-	DeleteComment(ctx context.Context, id int) error
+	UpdateComment(ctx context.Context, id int, in inputs.UpdateCommentInput) error
+	DeleteComment(ctx context.Context, userId, id int) error
 }
 
 type CommentService struct {
@@ -99,8 +99,21 @@ func (commentS *CommentService) UpdateComment(ctx context.Context, id int, in in
 	return nil
 }
 
-func (commentS *CommentService) DeleteComment(ctx context.Context, id int) error {
-	err := commentS.CommentRepo.DeleteComment(ctx, id)
+func (commentS *CommentService) DeleteComment(ctx context.Context, userId, id int) error {
+	comment, err := commentS.CommentRepo.GetCommentById(ctx, id)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return apperrors.ErrNotFound
+		}
+
+		return fmt.Errorf("failed to get comment by id: %w", err)
+	}
+
+	if comment.CreatorId != userId {
+		return fmt.Errorf("user is not the owner of the comment")
+	}
+
+	err = commentS.CommentRepo.DeleteComment(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete a comment: %w", err)
 	}
