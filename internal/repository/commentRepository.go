@@ -48,13 +48,10 @@ func (commentRepo *CommentRepository) AddComment(ctx context.Context, comment *m
 }
 
 func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int) (*models.Comment, error) {
-	row := commentRepo.Pool.QueryRow(ctx,
-		"SELECT id, comment, task_id, creator_id, created_at, updated_at, deleted_at FROM tasks_comments WHERE id = $1 AND deleted_at IS NULL",
-		id,
-	)
+	query := `SELECT id, comment, task_id, creator_id, created_at, updated_at, deleted_at FROM tasks_comments WHERE id = $1 AND deleted_at IS NULL`
 
 	var comment models.Comment
-	err := row.Scan(
+	err := commentRepo.Pool.QueryRow(ctx, query, id).Scan(
 		&comment.Id,
 		&comment.Comment,
 		&comment.TaskId,
@@ -65,6 +62,9 @@ func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int
 	)
 
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to scan: %w", err)
 	}
 
@@ -72,10 +72,9 @@ func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int
 }
 
 func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]models.Comment, error) {
-	rows, err := commentRepo.Pool.Query(ctx,
-		"SELECT id, comment, task_id, creator_id, created_at, updated_at FROM tasks_comments WHERE deleted_at IS NULL",
-	)
+	query := `SELECT id, comment, task_id, creator_id, created_at, updated_at FROM tasks_comments WHERE deleted_at IS NULL`
 
+	rows, err := commentRepo.Pool.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all comments: %w", err)
 	}
@@ -111,14 +110,10 @@ func (commentRepo *CommentRepository) GetAllComments(ctx context.Context) ([]mod
 }
 
 func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int, comment string) error {
-	row := commentRepo.Pool.QueryRow(ctx,
-		"UPDATE tasks_comments SET comment = $1, updated_at = now() WHERE id = $2 AND deleted_at IS NULL RETURNING id",
-		comment,
-		id,
-	)
+	query := `UPDATE tasks_comments SET comment = $1, updated_at = now() WHERE id = $2 AND deleted_at IS NULL RETURNING id`
 
 	var returnedId int
-	err := row.Scan(
+	err := commentRepo.Pool.QueryRow(ctx, query, comment, id).Scan(
 		&returnedId,
 	)
 
@@ -133,10 +128,14 @@ func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int,
 }
 
 func (commentRepo *CommentRepository) DeleteComment(ctx context.Context, id int) error {
-	_, err := commentRepo.Pool.Exec(ctx,
+	res, err := commentRepo.Pool.Exec(ctx,
 		"UPDATE tasks_comments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	)
+
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to delete a comment: %w", err)
