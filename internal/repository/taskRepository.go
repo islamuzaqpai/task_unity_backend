@@ -206,9 +206,15 @@ func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in input
 }
 
 func (taskRepo *TaskRepository) DeleteTask(ctx context.Context, id int) error {
-	_, err := taskRepo.Pool.Exec(ctx,
-		"UPDATE tasks SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
+	query := `UPDATE tasks SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
+
+	res, err := taskRepo.Pool.Exec(ctx,
+		query,
 		id)
+
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to delete a task: %w", err)
