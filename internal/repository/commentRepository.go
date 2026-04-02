@@ -62,7 +62,7 @@ func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int
 	)
 
 	if err != nil {
-		if errors.Is(err, apperrors.ErrNotFound) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to scan: %w", err)
