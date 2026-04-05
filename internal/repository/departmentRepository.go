@@ -2,7 +2,10 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"enactus/internal/apperrors"
 	"enactus/internal/models"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,12 +28,8 @@ func NewDepartmentRepository(pool *pgxpool.Pool) *DepartmentRepository {
 }
 
 func (departmentRepo *DepartmentRepository) AddDepartment(ctx context.Context, department *models.Department) error {
-	row := departmentRepo.Pool.QueryRow(ctx,
-		"INSERT INTO departments (name) VALUES ($1) RETURNING id, created_at, updated_at",
-		department.Name,
-	)
-
-	err := row.Scan(
+	query := `INSERT INTO departments (name) VALUES ($1) RETURNING id, created_at, updated_at`
+	err := departmentRepo.Pool.QueryRow(ctx, query, department.Name).Scan(
 		&department.Id,
 		&department.CreatedAt,
 		&department.UpdatedAt,
@@ -44,13 +43,10 @@ func (departmentRepo *DepartmentRepository) AddDepartment(ctx context.Context, d
 }
 
 func (departmentRepo *DepartmentRepository) GetDepartmentById(ctx context.Context, id int) (*models.Department, error) {
-	row := departmentRepo.Pool.QueryRow(ctx,
-		"SELECT id, name, created_at, updated_at, deleted_at FROM departments WHERE id = $1 AND deleted_at IS NULL",
-		id,
-	)
-
+	query := `SELECT id, name, created_at, updated_at, deleted_at FROM departments WHERE id = $1 AND deleted_at IS NULL`
 	var department models.Department
-	err := row.Scan(
+
+	err := departmentRepo.Pool.QueryRow(ctx, query, id).Scan(
 		&department.Id,
 		&department.Name,
 		&department.CreatedAt,
@@ -59,6 +55,10 @@ func (departmentRepo *DepartmentRepository) GetDepartmentById(ctx context.Contex
 	)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperrors.ErrNotFound
+		}
+
 		return nil, fmt.Errorf("failed to scan: %w", err)
 	}
 
@@ -66,9 +66,9 @@ func (departmentRepo *DepartmentRepository) GetDepartmentById(ctx context.Contex
 }
 
 func (departmentRepo *DepartmentRepository) GetAllDepartments(ctx context.Context) ([]models.Department, error) {
-	rows, err := departmentRepo.Pool.Query(ctx,
-		"SELECT id, name, created_at, updated_at FROM departments WHERE deleted_at is null ",
-	)
+	query := `SELECT id, name, created_at, updated_at FROM departments WHERE deleted_at is null`
+
+	rows, err := departmentRepo.Pool.Query(ctx, query)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to select all departments: %w", err)
@@ -103,8 +103,10 @@ func (departmentRepo *DepartmentRepository) GetAllDepartments(ctx context.Contex
 }
 
 func (departmentRepo *DepartmentRepository) UpdateDepartment(ctx context.Context, id int, newDepartment *models.Department) error {
+	query := `UPDATE departments SET name = $1, updated_at = now() WHERE id = $2 RETURNING id`
+
 	row := departmentRepo.Pool.QueryRow(ctx,
-		"UPDATE departments SET name = $1, updated_at = now() WHERE id = $2 RETURNING id",
+		query,
 		newDepartment.Name,
 		id,
 	)
@@ -115,6 +117,10 @@ func (departmentRepo *DepartmentRepository) UpdateDepartment(ctx context.Context
 	)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperrors.ErrNotFound
+		}
+
 		return fmt.Errorf("failed to scan: %w", err)
 	}
 
@@ -122,12 +128,15 @@ func (departmentRepo *DepartmentRepository) UpdateDepartment(ctx context.Context
 }
 
 func (departmentRepo *DepartmentRepository) DeleteDepartment(ctx context.Context, id int) error {
-	_, err := departmentRepo.Pool.Exec(ctx,
-		"UPDATE departments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
-		id,
-	)
+	query := `UPDATE departments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
+
+	res, err := departmentRepo.Pool.Exec(ctx, query, id)
 
 	if err != nil {
+		if res.RowsAffected() == 0 {
+			return apperrors.ErrNotFound
+		}
+
 		return fmt.Errorf("failed to delete a department: %w", err)
 	}
 
@@ -135,16 +144,20 @@ func (departmentRepo *DepartmentRepository) DeleteDepartment(ctx context.Context
 }
 
 func (departmentRepo *DepartmentRepository) DepartmentExists(ctx context.Context, departmentName string) (bool, error) {
-	row := departmentRepo.Pool.QueryRow(ctx,
-		"SELECT EXISTS (SELECT 1 FROM departments WHERE name = $1)",
-		departmentName,
-	)
+	query := `SELECT EXISTS (SELECT 1 FROM departments WHERE name = $1)`
+
+	row := departmentRepo.Pool.QueryRow(ctx, query, departmentName)
 
 	var exists bool
 	err := row.Scan(
 		&exists,
 	)
+
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, apperrors.ErrNotFound
+		}
+
 		return false, fmt.Errorf("failed to scan: %w", err)
 	}
 

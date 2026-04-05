@@ -128,10 +128,9 @@ func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int,
 }
 
 func (commentRepo *CommentRepository) DeleteComment(ctx context.Context, id int) error {
-	res, err := commentRepo.Pool.Exec(ctx,
-		"UPDATE tasks_comments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
-		id,
-	)
+	query := `UPDATE tasks_comments SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
+
+	res, err := commentRepo.Pool.Exec(ctx, query, id)
 
 	if res.RowsAffected() == 0 {
 		return apperrors.ErrNotFound
