@@ -144,17 +144,25 @@ func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) 
 	query := `INSERT INTO users (full_name, email, password, department_id) 
 			  VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
 
-	if err := tx.QueryRow(ctx, query, user.FullName, user.Email, user.Password, user.DepartmentId).
-		Scan(&user.Id, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	err = tx.QueryRow(ctx, query, user.FullName, user.Email, user.Password, user.DepartmentId).
+		Scan(&user.Id, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
 		return fmt.Errorf("failed to add user: %w", err)
 	}
 
 	query = `INSERT INTO users_roles (user_id, role_id) VALUES ($1, (SELECT id FROM roles WHERE name = 'user'))`
-	if _, err := tx.Exec(ctx, query, user.Id); err != nil {
+	res, err := tx.Exec(ctx, query, user.Id)
+
+	if err != nil {
+		if res.RowsAffected() == 0 {
+			return apperrors.ErrNotFound
+		}
 		return fmt.Errorf("failed to assign role to user: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	err = tx.Commit(ctx)
+	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
