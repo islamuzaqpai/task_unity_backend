@@ -116,6 +116,9 @@ func (taskH *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) er
 
 	task, err := taskH.TaskS.GetTaskById(ctx, id)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("task")
+		}
 		return httpx.InternalError(err)
 	}
 
@@ -144,13 +147,21 @@ func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) err
 	}
 
 	v := helpers.NewValidator()
-	errors := helpers.Validate(req, v)
-	if errors != nil {
-		return httpx.BadRequest("invalid status")
+	validationErrors := helpers.Validate(req, v)
+	if validationErrors != nil {
+		return httpx.BadRequestValidation(validationErrors)
 	}
 
-	updated, err := taskH.TaskS.UpdateTask(ctx, userId, id, req)
+	role := r.Context().Value("claims").(map[string]interface{})["role"].(string)
+
+	updated, err := taskH.TaskS.UpdateTask(ctx, userId, id, role, req)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("task")
+		}
+		if errors.Is(err, apperrors.ErrForbidden) {
+			return httpx.Forbidden("insufficient permissions")
+		}
 		return httpx.InternalError(err)
 	}
 
@@ -172,8 +183,16 @@ func (taskH *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) err
 		return httpx.BadRequest("invalid task ID")
 	}
 
-	err = taskH.TaskS.DeleteTask(ctx, id, userId)
+	role := r.Context().Value("claims").(map[string]interface{})["role"].(string)
+
+	err = taskH.TaskS.DeleteTask(ctx, id, userId, role)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("task")
+		}
+		if errors.Is(err, apperrors.ErrForbidden) {
+			return httpx.Forbidden("insufficient permissions")
+		}
 		return httpx.InternalError(err)
 	}
 

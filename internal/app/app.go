@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 )
 
 func Run() {
@@ -19,6 +20,8 @@ func Run() {
 	if err != nil {
 		log.Fatalf("failed to load data from .env: %v", err)
 	}
+
+	config.ApplyDefaults(cfg)
 
 	err = config.ValidateConfig(cfg)
 	if err != nil {
@@ -63,10 +66,12 @@ func Run() {
 	routes.CommentRoutes(commentH, mux, &jwtSecret)
 
 	muxWithCors := middleware.CORS(mux)
-	addr := ":8080"
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	server := &http.Server{
-		Addr:    addr,
-		Handler: muxWithCors,
+		Addr:         addr,
+		Handler:      muxWithCors,
+		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
 	}
 
 	log.Fatal(server.ListenAndServe())

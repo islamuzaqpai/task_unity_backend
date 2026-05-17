@@ -46,6 +46,9 @@ func (commentH *CommentHandler) AddComment(w http.ResponseWriter, r *http.Reques
 
 	added, err := commentH.CommentS.AddComment(ctx, &req)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("task")
+		}
 		return httpx.InternalError(err)
 	}
 
@@ -91,10 +94,15 @@ func (commentH *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Req
 
 	req.UserId = userId
 
-	err = commentH.CommentS.UpdateComment(ctx, id, req)
+	role := r.Context().Value("claims").(map[string]interface{})["role"].(string)
+
+	err = commentH.CommentS.UpdateComment(ctx, id, role, req)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return httpx.NotFound("comment")
+		}
+		if errors.Is(err, apperrors.ErrForbidden) {
+			return httpx.Forbidden("insufficient permissions")
 		}
 
 		return httpx.InternalError(err)
@@ -120,10 +128,15 @@ func (commentH *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Req
 		return httpx.BadRequest("user_id missing")
 	}
 
-	err = commentH.CommentS.DeleteComment(ctx, userId, id)
+	role := r.Context().Value("claims").(map[string]interface{})["role"].(string)
+
+	err = commentH.CommentS.DeleteComment(ctx, userId, id, role)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return httpx.NotFound("comment")
+		}
+		if errors.Is(err, apperrors.ErrForbidden) {
+			return httpx.Forbidden("insufficient permissions")
 		}
 
 		return httpx.InternalError(err)

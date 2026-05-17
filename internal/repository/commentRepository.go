@@ -2,12 +2,12 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -62,7 +62,7 @@ func (commentRepo *CommentRepository) GetCommentById(ctx context.Context, id int
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to scan: %w", err)
@@ -118,7 +118,7 @@ func (commentRepo *CommentRepository) UpdateComment(ctx context.Context, id int,
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return apperrors.ErrNotFound
 		}
 		return fmt.Errorf("failed to scan: %w", err)
@@ -132,12 +132,12 @@ func (commentRepo *CommentRepository) DeleteComment(ctx context.Context, id int)
 
 	res, err := commentRepo.Pool.Exec(ctx, query, id)
 
-	if res.RowsAffected() == 0 {
-		return apperrors.ErrNotFound
-	}
-
 	if err != nil {
 		return fmt.Errorf("failed to delete a comment: %w", err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
 	}
 
 	return nil

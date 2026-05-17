@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"enactus/internal/apperrors"
-	"enactus/internal/httpx"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"enactus/internal/repository"
@@ -35,17 +34,22 @@ func (attendanceS *AttendanceService) AddAttendance(ctx context.Context, in *inp
 	creatorUser, err := attendanceS.UserS.GetUserById(ctx, in.Creator)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, httpx.NotFound("user")
+			return nil, apperrors.ErrNotFound
 		}
+		return nil, fmt.Errorf("failed to get creator user: %w", err)
 	}
 
 	user, err := attendanceS.UserS.GetUserById(ctx, in.UserId)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			return nil, httpx.NotFound("user")
+			return nil, apperrors.ErrNotFound
 		}
 
-		return nil, fmt.Errorf("failed to get creator user: %w", err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if creatorUser.DepartmentId == nil || user.DepartmentId == nil {
+		return nil, fmt.Errorf("creator user and user must be in the same department")
 	}
 
 	if *creatorUser.DepartmentId != *user.DepartmentId {
@@ -101,6 +105,9 @@ func (attendanceS *AttendanceService) UpdateAttendance(ctx context.Context, id i
 func (attendanceS *AttendanceService) DeleteAttendance(ctx context.Context, id int) error {
 	err := attendanceS.AttendanceRepo.DeleteAttendance(ctx, id)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return apperrors.ErrNotFound
+		}
 		return fmt.Errorf("failed to delete an attendance: %w", err)
 	}
 

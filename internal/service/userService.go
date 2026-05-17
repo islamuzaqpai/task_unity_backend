@@ -116,17 +116,25 @@ func (userS *UserService) GetUserById(ctx context.Context, id int) (*models.User
 }
 
 func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) (*models.User, error) {
+	user, err := userS.UserRepo.GetUserById(ctx, id)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by id: %w", err)
+	}
+
 	if in.Email != nil {
 		exists, err := userS.UserRepo.EmailExists(ctx, in.Email)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check email: %w", err)
 		}
-		if exists {
+		if exists && user.Email != *in.Email {
 			return nil, apperrors.ErrEmailAlreadyExists
 		}
 	}
 
-	err := userS.UserRepo.UpdateUserProfile(ctx, id, in)
+	err = userS.UserRepo.UpdateUserProfile(ctx, id, in)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return nil, apperrors.ErrNotFound
@@ -134,7 +142,7 @@ func (userS *UserService) UpdateUserProfile(ctx context.Context, id int, in inpu
 		return nil, fmt.Errorf("failed to update user profile: %w", err)
 	}
 
-	user, err := userS.UserRepo.GetUserById(ctx, id)
+	user, err = userS.UserRepo.GetUserById(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
 			return nil, apperrors.ErrNotFound

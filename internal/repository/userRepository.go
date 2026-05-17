@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
@@ -10,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -33,7 +33,7 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 }
 
 func (userRepo *UserRepository) GetUserById(ctx context.Context, id int) (*models.User, error) {
-	query := `SELECT id, full_name, email, department_id, created_at, updated_at, deleted_at FROM users WHERE id = $1`
+	query := `SELECT id, full_name, email, department_id, created_at, updated_at, deleted_at FROM users WHERE id = $1 AND deleted_at IS NULL`
 
 	var user models.User
 	err := userRepo.Pool.QueryRow(ctx, query, id).Scan(
@@ -47,7 +47,7 @@ func (userRepo *UserRepository) GetUserById(ctx context.Context, id int) (*model
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
@@ -57,7 +57,7 @@ func (userRepo *UserRepository) GetUserById(ctx context.Context, id int) (*model
 }
 
 func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User, error) {
-	query := `SELECT id, full_name, email, department_id, created_at, updated_at, deleted_at FROM users`
+	query := `SELECT id, full_name, email, department_id, created_at, updated_at, deleted_at FROM users WHERE deleted_at IS NULL`
 
 	rows, err := userRepo.Pool.Query(ctx, query)
 	if err != nil {
@@ -113,7 +113,7 @@ func (userRepo *UserRepository) GetAuthUserByEmail(ctx context.Context, email st
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, "", apperrors.ErrNotFound
 		}
 		return nil, "", fmt.Errorf("failed to get auth user by email: %w", err)
@@ -151,14 +151,15 @@ func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) 
 		return fmt.Errorf("failed to add user: %w", err)
 	}
 
-	query = `INSERT INTO users_roles (user_id, role_id) VALUES ($1, (SELECT id FROM roles WHERE name = 'user'))`
+	query = `INSERT INTO users_roles (user_id, role_id) SELECT $1, id FROM roles WHERE name = 'user'`
 	res, err := tx.Exec(ctx, query, user.Id)
 
 	if err != nil {
-		if res.RowsAffected() == 0 {
-			return apperrors.ErrNotFound
-		}
 		return fmt.Errorf("failed to assign role to user: %w", err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
 	}
 
 	err = tx.Commit(ctx)
@@ -191,7 +192,7 @@ func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, i
 	}
 
 	query = strings.TrimSuffix(query, ",")
-	query += fmt.Sprintf(" WHERE id = $%d", i)
+	query += fmt.Sprintf(" WHERE id = $%d AND deleted_at IS NULL", i)
 	args = append(args, id)
 
 	result, err := userRepo.Pool.Exec(ctx, query, args...)
@@ -208,7 +209,7 @@ func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, i
 
 func (userRepo *UserRepository) UpdateUserPassword(ctx context.Context, id int, newPassword string) error {
 	cmdTag, err := userRepo.Pool.Exec(ctx,
-		"UPDATE users SET password = $1 WHERE id = $2",
+		"UPDATE users SET password = $1 WHERE id = $2 AND deleted_at IS NULL",
 		newPassword,
 		id,
 	)

@@ -2,12 +2,12 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -55,7 +55,7 @@ func (departmentRepo *DepartmentRepository) GetDepartmentById(ctx context.Contex
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 
@@ -117,7 +117,7 @@ func (departmentRepo *DepartmentRepository) UpdateDepartment(ctx context.Context
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return apperrors.ErrNotFound
 		}
 
@@ -133,11 +133,11 @@ func (departmentRepo *DepartmentRepository) DeleteDepartment(ctx context.Context
 	res, err := departmentRepo.Pool.Exec(ctx, query, id)
 
 	if err != nil {
-		if res.RowsAffected() == 0 {
-			return apperrors.ErrNotFound
-		}
-
 		return fmt.Errorf("failed to delete a department: %w", err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
 	}
 
 	return nil
@@ -154,7 +154,7 @@ func (departmentRepo *DepartmentRepository) DepartmentExists(ctx context.Context
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return false, apperrors.ErrNotFound
 		}
 

@@ -7,6 +7,7 @@ var (
 	ErrEmailAlreadyExists = errors.New("email already exists")
 	ErrWeakPassword       = errors.New("weak password")
 	ErrUnauthorized       = errors.New("unauthorized")
+	ErrForbidden          = errors.New("forbidden")
 	ErrAssigneeNotFound   = errors.New("assignee user not found")
 	ErrCreatorNotFound    = errors.New("creator user not found")
 )

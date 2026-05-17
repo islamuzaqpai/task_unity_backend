@@ -63,6 +63,14 @@ func Unauthorized(message string) *AppError {
 	}
 }
 
+func Forbidden(message string) *AppError {
+	return &AppError{
+		Code:    "FORBIDDEN",
+		Message: message,
+		Status:  http.StatusForbidden,
+	}
+}
+
 func UserAlreadyExists() *AppError {
 	return &AppError{
 		Code:    "USER_ALREADY_EXISTS",

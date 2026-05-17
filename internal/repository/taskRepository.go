@@ -2,13 +2,13 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -71,7 +71,7 @@ func (taskRepo *TaskRepository) GetTaskById(ctx context.Context, id int) (*model
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 
@@ -199,6 +199,9 @@ func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in input
 	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to scan: %w", err)
 	}
 
@@ -212,12 +215,12 @@ func (taskRepo *TaskRepository) DeleteTask(ctx context.Context, id int) error {
 		query,
 		id)
 
-	if res.RowsAffected() == 0 {
-		return apperrors.ErrNotFound
-	}
-
 	if err != nil {
 		return fmt.Errorf("failed to delete a task: %w", err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
 	}
 
 	return nil

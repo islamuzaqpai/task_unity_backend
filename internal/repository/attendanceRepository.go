@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
@@ -10,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -72,7 +72,7 @@ func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Contex
 		)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to scan: %w", err)
@@ -150,7 +150,7 @@ func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context
 	}
 
 	query = strings.TrimSuffix(query, ",")
-	query += fmt.Sprintf(" WHERE id = $%d", i)
+	query += fmt.Sprintf(" WHERE id = $%d AND deleted_at IS NULL", i)
 	args = append(args, id)
 
 	result, err := attendanceRepo.Pool.Exec(ctx, query, args...)
@@ -170,12 +170,12 @@ func (attendanceRepo *AttendanceRepository) DeleteAttendance(ctx context.Context
 
 	res, err := attendanceRepo.Pool.Exec(ctx, query, id)
 
-	if res.RowsAffected() == 0 {
-		return apperrors.ErrNotFound
-	}
-
 	if err != nil {
 		return fmt.Errorf("failed to delete an attendance: %w", err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
 	}
 
 	return nil

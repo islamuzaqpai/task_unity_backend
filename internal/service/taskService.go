@@ -15,8 +15,8 @@ type TaskServiceInterface interface {
 	GetAllTasks(ctx context.Context) ([]models.Task, error)
 	GetTaskById(ctx context.Context, id int) (*models.Task, error)
 	GetAllTasksByAssigneeId(ctx context.Context, creatorId int) ([]models.Task, error)
-	UpdateTask(ctx context.Context, userId, taskId int, in inputs.UpdateTaskInput) (*models.Task, error)
-	DeleteTask(ctx context.Context, taskId, userId int) error
+	UpdateTask(ctx context.Context, userId, taskId int, role string, in inputs.UpdateTaskInput) (*models.Task, error)
+	DeleteTask(ctx context.Context, taskId, userId int, role string) error
 }
 
 type TaskService struct {
@@ -43,6 +43,10 @@ func (taskS *TaskService) AddTask(ctx context.Context, task *models.Task) (*mode
 			return nil, apperrors.ErrAssigneeNotFound
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if creator.DepartmentId == nil || assignee.DepartmentId == nil {
+		return nil, fmt.Errorf("creator and assignee must be in the same department")
 	}
 
 	if *creator.DepartmentId != *assignee.DepartmentId {
@@ -86,14 +90,17 @@ func (taskS *TaskService) GetTaskById(ctx context.Context, id int) (*models.Task
 	return task, nil
 }
 
-func (taskS *TaskService) UpdateTask(ctx context.Context, userId, taskId int, in inputs.UpdateTaskInput) (*models.Task, error) {
+func (taskS *TaskService) UpdateTask(ctx context.Context, userId, taskId int, role string, in inputs.UpdateTaskInput) (*models.Task, error) {
 	task, err := taskS.GetTaskById(ctx, taskId)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil, apperrors.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to get task: %w", err)
 	}
 
-	if task.CreatorId != userId {
-		return nil, fmt.Errorf("you cannot update task")
+	if role != "admin" && role != "manager" && task.CreatorId != userId {
+		return nil, apperrors.ErrForbidden
 	}
 
 	updated, err := taskS.TaskRepo.UpdateTask(ctx, taskId, in)
@@ -104,14 +111,17 @@ func (taskS *TaskService) UpdateTask(ctx context.Context, userId, taskId int, in
 	return updated, nil
 }
 
-func (taskS *TaskService) DeleteTask(ctx context.Context, taskId, userId int) error {
+func (taskS *TaskService) DeleteTask(ctx context.Context, taskId, userId int, role string) error {
 	task, err := taskS.GetTaskById(ctx, taskId)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return apperrors.ErrNotFound
+		}
 		return fmt.Errorf("failed to get task: %w", err)
 	}
 
-	if task.CreatorId != userId {
-		return fmt.Errorf("you cannot update task")
+	if role != "admin" && role != "manager" && task.CreatorId != userId {
+		return apperrors.ErrForbidden
 	}
 
 	err = taskS.TaskRepo.DeleteTask(ctx, taskId)

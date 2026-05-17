@@ -32,6 +32,9 @@ func (departmentH *DepartmentHandler) AddDepartment(w http.ResponseWriter, r *ht
 
 	added, err := departmentH.DepartmentS.AddDepartment(ctx, &department)
 	if err != nil {
+		if err.Error() == "department already exists" {
+			return httpx.BadRequest("department already exists")
+		}
 		return httpx.InternalError(err)
 	}
 

@@ -14,8 +14,8 @@ type CommentServiceInterface interface {
 	AddComment(ctx context.Context, in *inputs.AddCommentInput) (*models.Comment, error)
 	GetAllComments(ctx context.Context) ([]models.Comment, error)
 	GetCommentById(ctx context.Context, id int) (*models.Comment, error)
-	UpdateComment(ctx context.Context, id int, in inputs.UpdateCommentInput) error
-	DeleteComment(ctx context.Context, userId, id int) error
+	UpdateComment(ctx context.Context, id int, role string, in inputs.UpdateCommentInput) error
+	DeleteComment(ctx context.Context, userId, id int, role string) error
 }
 
 type CommentService struct {
@@ -73,7 +73,7 @@ func (commentS *CommentService) GetCommentById(ctx context.Context, id int) (*mo
 	return comment, err
 }
 
-func (commentS *CommentService) UpdateComment(ctx context.Context, id int, in inputs.UpdateCommentInput) error {
+func (commentS *CommentService) UpdateComment(ctx context.Context, id int, role string, in inputs.UpdateCommentInput) error {
 	comment, err := commentS.CommentRepo.GetCommentById(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
@@ -83,8 +83,8 @@ func (commentS *CommentService) UpdateComment(ctx context.Context, id int, in in
 		return fmt.Errorf("failed to get comment by id: %w", err)
 	}
 
-	if comment.CreatorId != in.UserId {
-		return fmt.Errorf("user is not the owner of the comment")
+	if role != "admin" && role != "manager" && comment.CreatorId != in.UserId {
+		return apperrors.ErrForbidden
 	}
 
 	err = commentS.CommentRepo.UpdateComment(ctx, id, in.Comment)
@@ -99,7 +99,7 @@ func (commentS *CommentService) UpdateComment(ctx context.Context, id int, in in
 	return nil
 }
 
-func (commentS *CommentService) DeleteComment(ctx context.Context, userId, id int) error {
+func (commentS *CommentService) DeleteComment(ctx context.Context, userId, id int, role string) error {
 	comment, err := commentS.CommentRepo.GetCommentById(ctx, id)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
@@ -109,8 +109,8 @@ func (commentS *CommentService) DeleteComment(ctx context.Context, userId, id in
 		return fmt.Errorf("failed to get comment by id: %w", err)
 	}
 
-	if comment.CreatorId != userId {
-		return fmt.Errorf("user is not the owner of the comment")
+	if role != "admin" && role != "manager" && comment.CreatorId != userId {
+		return apperrors.ErrForbidden
 	}
 
 	err = commentS.CommentRepo.DeleteComment(ctx, id)

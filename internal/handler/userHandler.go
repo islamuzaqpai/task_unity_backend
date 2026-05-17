@@ -44,6 +44,9 @@ func (userH UserHandler) Register(w http.ResponseWriter, r *http.Request) error 
 		if errors.Is(err, apperrors.ErrEmailAlreadyExists) {
 			return httpx.UserAlreadyExists()
 		}
+		if errors.Is(err, apperrors.ErrWeakPassword) {
+			return httpx.BadRequest("weak password")
+		}
 
 		log.Printf("failed to add user: %v", err)
 		return httpx.InternalError(err)
@@ -93,6 +96,9 @@ func (userH *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) er
 
 	user, err := userH.UserService.GetUserById(ctx, id)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("user")
+		}
 		return httpx.InternalError(err)
 	}
 
@@ -117,6 +123,12 @@ func (userH *UserHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Reque
 
 	updated, err := userH.UserService.UpdateUserProfile(ctx, id, req)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("user")
+		}
+		if errors.Is(err, apperrors.ErrEmailAlreadyExists) {
+			return httpx.UserAlreadyExists()
+		}
 		return httpx.InternalError(err)
 	}
 
@@ -141,6 +153,12 @@ func (userH *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Requ
 
 	err = userH.UserService.UpdateUserPassword(ctx, id, req.Password)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("user")
+		}
+		if errors.Is(err, apperrors.ErrWeakPassword) {
+			return httpx.BadRequest("weak password")
+		}
 		return httpx.InternalError(err)
 	}
 
@@ -159,6 +177,9 @@ func (userH *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) err
 
 	err = userH.UserService.DeleteUser(ctx, id)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("user")
+		}
 		return httpx.InternalError(err)
 	}
 

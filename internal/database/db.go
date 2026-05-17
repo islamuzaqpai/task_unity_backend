@@ -10,12 +10,13 @@ import (
 )
 
 func Connect(dbCfg config.DatabaseConfig) (*pgxpool.Pool, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s port=%d dbname=%s",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s port=%d dbname=%s sslmode=%s",
 		dbCfg.Host,
 		dbCfg.User,
 		dbCfg.Password,
 		dbCfg.Port,
 		dbCfg.DBName,
+		dbCfg.SSLMode,
 	)
 
 	poolCfg, err := pgxpool.ParseConfig(dsn)

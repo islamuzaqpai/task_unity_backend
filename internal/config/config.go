@@ -20,7 +20,7 @@ type DatabaseConfig struct {
 	User     string `json:"user"`
 	Password string `json:"password"`
 	DBName   string `json:"db_name"`
-	SSLMode  string `json:"ssl_modeMode"`
+	SSLMode  string `json:"ssl_mode"`
 }
 
 type Config struct {
@@ -88,7 +88,7 @@ func ApplyDefaults(cfg *Config) {
 	}
 
 	if cfg.Database.SSLMode == "" {
-		cfg.Database.SSLMode = "disabled"
+		cfg.Database.SSLMode = "disable"
 	}
 }
 

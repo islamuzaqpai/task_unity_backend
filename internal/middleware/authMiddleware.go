@@ -28,7 +28,7 @@ func AuthMiddleware(jwtSecret *auth.JWTSecret, next httpx.AppHandler) httpx.AppH
 
 		token, err := jwtSecret.ValidateToken(tokenStr)
 		if err != nil {
-			return httpx.ValidationError(err)
+			return httpx.Unauthorized("invalid token")
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)

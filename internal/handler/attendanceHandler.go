@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"enactus/internal/apperrors"
 	"enactus/internal/helpers"
 	"enactus/internal/httpx"
 	"enactus/internal/models/inputs"
 	"enactus/internal/service"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 )
@@ -42,6 +44,9 @@ func (attendanceH *AttendanceHandler) AddAttendance(w http.ResponseWriter, r *ht
 	req.Creator = userId
 	added, err := attendanceH.AttendanceS.AddAttendance(ctx, &req)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("user")
+		}
 		return httpx.InternalError(err)
 	}
 
@@ -91,6 +96,9 @@ func (attendanceH *AttendanceHandler) UpdateAttendance(w http.ResponseWriter, r 
 
 	err = attendanceH.AttendanceS.UpdateAttendance(ctx, id, &req)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("attendance")
+		}
 		return httpx.InternalError(err)
 	}
 
@@ -109,6 +117,9 @@ func (attendanceH *AttendanceHandler) DeleteAttendance(w http.ResponseWriter, r 
 
 	err = attendanceH.AttendanceS.DeleteAttendance(ctx, id)
 	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return httpx.NotFound("attendance")
+		}
 		return httpx.InternalError(err)
 	}
 
