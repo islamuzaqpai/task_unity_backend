@@ -1,18 +1,17 @@
 package middleware
 
 import (
-	"context"
 	"enactus/internal/auth"
 	"enactus/internal/httpx"
-	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 func AuthMiddleware(jwtSecret *auth.JWTSecret, next httpx.AppHandler) httpx.AppHandler {
-	return func(w http.ResponseWriter, r *http.Request) error {
-		tokenStr := r.Header.Get("Authorization")
+	return func(c *gin.Context) error {
+		tokenStr := c.GetHeader("Authorization")
 
 		if tokenStr == "" {
 			return httpx.Unauthorized("empty token")
@@ -42,11 +41,11 @@ func AuthMiddleware(jwtSecret *auth.JWTSecret, next httpx.AppHandler) httpx.AppH
 			return httpx.Unauthorized("role missing in token")
 		}
 
-		ctx := context.WithValue(r.Context(), "user_id", userId)
-		ctx = context.WithValue(ctx, "claims", map[string]interface{}{
+		c.Set("user_id", userId)
+		c.Set("claims", map[string]interface{}{
 			"user_id": userId,
 			"role":    role,
 		})
-		return next(w, r.WithContext(ctx))
+		return next(c)
 	}
 }

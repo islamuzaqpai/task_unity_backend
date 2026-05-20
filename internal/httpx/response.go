@@ -1,23 +1,15 @@
 package httpx
 
-import (
-	"encoding/json"
-	"net/http"
-)
+import "github.com/gin-gonic/gin"
 
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-func WriteJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+func WriteJSON(c *gin.Context, status int, data any) {
+	c.JSON(status, data)
 }
 
-func WriteError(w http.ResponseWriter, status int, message string) {
-	w.WriteHeader(status)
-	WriteJSON(w, status, ErrorResponse{Error: message})
+func WriteError(c *gin.Context, status int, message string) {
+	c.JSON(status, ErrorResponse{Error: message})
 }

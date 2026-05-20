@@ -5,17 +5,16 @@ import (
 	"enactus/internal/httpx"
 	"enactus/internal/models/inputs"
 	"enactus/internal/service"
-	"encoding/json"
 	"errors"
-	"net/http"
+	"github.com/gin-gonic/gin"
 	"strconv"
 )
 
 type CommentHandlerInterface interface {
-	AddComment(w http.ResponseWriter, r *http.Request) error
-	GetAllComments(w http.ResponseWriter, r *http.Request) error
-	UpdateComment(w http.ResponseWriter, r *http.Request) error
-	DeleteComment(w http.ResponseWriter, r *http.Request) error
+	AddComment(c *gin.Context) error
+	GetAllComments(c *gin.Context) error
+	UpdateComment(c *gin.Context) error
+	DeleteComment(c *gin.Context) error
 }
 
 type CommentHandler struct {
@@ -26,18 +25,20 @@ func NewCommentHandler(commentS *service.CommentService) *CommentHandler {
 	return &CommentHandler{CommentS: commentS}
 }
 
-func (commentH *CommentHandler) AddComment(w http.ResponseWriter, r *http.Request) error {
-	w.Header().Set("Content-Type", "application/json")
-
-	ctx := r.Context()
+func (commentH *CommentHandler) AddComment(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	var req inputs.AddCommentInput
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
-	creatorId, ok := r.Context().Value("user_id").(int)
+	userIDValue, ok := c.Get("user_id")
+	if !ok {
+		return httpx.BadRequest("invalid user id")
+	}
+
+	creatorId, ok := userIDValue.(int)
 	if !ok {
 		return httpx.BadRequest("invalid user id")
 	}
@@ -49,43 +50,43 @@ func (commentH *CommentHandler) AddComment(w http.ResponseWriter, r *http.Reques
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusCreated, added)
+	httpx.WriteJSON(c, 201, added)
 	return nil
 }
 
-func (commentH *CommentHandler) GetAllComments(w http.ResponseWriter, r *http.Request) error {
-	w.Header().Set("Content-Type", "application/json")
-
-	ctx := r.Context()
+func (commentH *CommentHandler) GetAllComments(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	comments, err := commentH.CommentS.GetAllComments(ctx)
 	if err != nil {
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, comments)
+	httpx.WriteJSON(c, 200, comments)
 	return nil
 }
 
-func (commentH *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) error {
-	w.Header().Set("Content-Type", "application/json")
+func (commentH *CommentHandler) UpdateComment(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	ctx := r.Context()
-
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid ID")
 	}
 
-	userId, ok := r.Context().Value("user_id").(int)
+	userIDValue, ok := c.Get("user_id")
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
+
+	userId, ok := userIDValue.(int)
 	if !ok {
 		return httpx.Unauthorized("user_id missing")
 	}
 
 	var req inputs.UpdateCommentInput
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
@@ -100,22 +101,25 @@ func (commentH *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Req
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, "ok")
+	httpx.WriteJSON(c, 200, "ok")
 	return nil
 }
 
-func (commentH *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) error {
-	w.Header().Set("Content-Type", "application/json")
+func (commentH *CommentHandler) DeleteComment(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	ctx := r.Context()
-
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid ID")
 	}
 
-	userId, ok := r.Context().Value("user_id").(int)
+	userIDValue, ok := c.Get("user_id")
+	if !ok {
+		return httpx.BadRequest("user_id missing")
+	}
+
+	userId, ok := userIDValue.(int)
 	if !ok {
 		return httpx.BadRequest("user_id missing")
 	}
@@ -129,6 +133,6 @@ func (commentH *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Req
 		return httpx.InternalError(err)
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(204)
 	return nil
 }

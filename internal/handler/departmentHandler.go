@@ -4,13 +4,13 @@ import (
 	"enactus/internal/httpx"
 	"enactus/internal/models"
 	"enactus/internal/service"
-	"encoding/json"
-	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type DepartmentHandlerInterface interface {
-	AddDepartment(w http.ResponseWriter, r *http.Request) error
-	GetAllDepartments(w http.ResponseWriter, r *http.Request) error
+	AddDepartment(c *gin.Context) error
+	GetAllDepartments(c *gin.Context) error
 }
 
 type DepartmentHandler struct {
@@ -21,12 +21,11 @@ func NewDepartmentHandler(departmentS *service.DepartmentService) *DepartmentHan
 	return &DepartmentHandler{DepartmentS: departmentS}
 }
 
-func (departmentH *DepartmentHandler) AddDepartment(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (departmentH *DepartmentHandler) AddDepartment(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	var department models.Department
-	err := json.NewDecoder(r.Body).Decode(&department)
-	if err != nil {
+	if err := c.ShouldBindJSON(&department); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
@@ -35,18 +34,18 @@ func (departmentH *DepartmentHandler) AddDepartment(w http.ResponseWriter, r *ht
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, added)
+	httpx.WriteJSON(c, 200, added)
 	return nil
 }
 
-func (departmentH *DepartmentHandler) GetAllDepartments(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (departmentH *DepartmentHandler) GetAllDepartments(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	departments, err := departmentH.DepartmentS.GetAllDepartments(ctx)
 	if err != nil {
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, departments)
+	httpx.WriteJSON(c, 200, departments)
 	return nil
 }

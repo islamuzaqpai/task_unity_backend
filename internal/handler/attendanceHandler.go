@@ -5,16 +5,15 @@ import (
 	"enactus/internal/httpx"
 	"enactus/internal/models/inputs"
 	"enactus/internal/service"
-	"encoding/json"
-	"net/http"
+	"github.com/gin-gonic/gin"
 	"strconv"
 )
 
 type AttendanceHandlerInterface interface {
-	AddAttendance(w http.ResponseWriter, r *http.Request) error
-	GetAllAttendances(w http.ResponseWriter, r *http.Request) error
-	UpdateAttendance(w http.ResponseWriter, r *http.Request) error
-	DeleteAttendance(w http.ResponseWriter, r *http.Request) error
+	AddAttendance(c *gin.Context) error
+	GetAllAttendances(c *gin.Context) error
+	UpdateAttendance(c *gin.Context) error
+	DeleteAttendance(c *gin.Context) error
 }
 
 type AttendanceHandler struct {
@@ -25,16 +24,20 @@ func NewAttendanceHandler(attendanceS *service.AttendanceService) *AttendanceHan
 	return &AttendanceHandler{AttendanceS: attendanceS}
 }
 
-func (attendanceH *AttendanceHandler) AddAttendance(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (attendanceH *AttendanceHandler) AddAttendance(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	var req inputs.AddAttendanceInput
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
-	userId, ok := r.Context().Value("user_id").(int)
+	userIDValue, ok := c.Get("user_id")
+	if !ok {
+		return httpx.BadRequest("invalid user id")
+	}
+
+	userId, ok := userIDValue.(int)
 	if !ok {
 		return httpx.BadRequest("invalid user id")
 	}
@@ -45,38 +48,42 @@ func (attendanceH *AttendanceHandler) AddAttendance(w http.ResponseWriter, r *ht
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusCreated, added)
+	httpx.WriteJSON(c, 201, added)
 	return nil
 }
 
-func (attendanceH *AttendanceHandler) GetAllAttendances(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (attendanceH *AttendanceHandler) GetAllAttendances(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	attendances, err := attendanceH.AttendanceS.GetAllAttendances(ctx)
 	if err != nil {
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, attendances)
+	httpx.WriteJSON(c, 200, attendances)
 	return nil
 }
 
-func (attendanceH *AttendanceHandler) UpdateAttendance(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (attendanceH *AttendanceHandler) UpdateAttendance(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid attendance id")
 	}
 
 	var req inputs.UpdateAttendanceInput
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
-	userId, ok := r.Context().Value("user_id").(int)
+	userIDValue, ok := c.Get("user_id")
+	if !ok {
+		return httpx.BadRequest("invalid user id")
+	}
+
+	userId, ok := userIDValue.(int)
 	if !ok {
 		return httpx.BadRequest("invalid user id")
 	}
@@ -94,14 +101,14 @@ func (attendanceH *AttendanceHandler) UpdateAttendance(w http.ResponseWriter, r 
 		return httpx.InternalError(err)
 	}
 
-	w.WriteHeader(http.StatusOK)
+	c.Status(200)
 	return nil
 }
 
-func (attendanceH *AttendanceHandler) DeleteAttendance(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (attendanceH *AttendanceHandler) DeleteAttendance(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid id")
@@ -112,6 +119,6 @@ func (attendanceH *AttendanceHandler) DeleteAttendance(w http.ResponseWriter, r 
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusNoContent, nil)
+	c.Status(204)
 	return nil
 }

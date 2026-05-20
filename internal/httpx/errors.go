@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AppError struct {
@@ -84,11 +86,11 @@ func BadRequestValidation(errors map[string][]string) error {
 	return &ValidatorError{Errors: errors}
 }
 
-type AppHandler func(w http.ResponseWriter, r *http.Request) error
+type AppHandler func(c *gin.Context) error
 
-func WrapHandler(h AppHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		err := h(w, r)
+func WrapHandler(h AppHandler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		err := h(c)
 		if err == nil {
 			return
 		}
@@ -96,17 +98,17 @@ func WrapHandler(h AppHandler) http.HandlerFunc {
 		var appErr *AppError
 		if errors.As(err, &appErr) {
 			fmt.Printf("Handled error: %+v\n", appErr.Err)
-			WriteJSON(w, appErr.Status, appErr)
+			WriteJSON(c, appErr.Status, appErr)
 			return
 		}
 
 		var validatorErr *ValidatorError
 		if errors.As(err, &validatorErr) {
-			WriteJSON(w, http.StatusBadRequest, validatorErr)
+			WriteJSON(c, http.StatusBadRequest, validatorErr)
 			return
 		}
 
 		internalErr := InternalError(err)
-		WriteJSON(w, internalErr.Status, internalErr)
+		WriteJSON(c, internalErr.Status, internalErr)
 	}
 }

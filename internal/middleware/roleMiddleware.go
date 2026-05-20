@@ -3,13 +3,14 @@ package middleware
 import (
 	"enactus/internal/httpx"
 	"enactus/internal/models"
-	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func RoleMiddleware(next httpx.AppHandler, roles ...models.Role) httpx.AppHandler {
-	return func(w http.ResponseWriter, r *http.Request) error {
-		claimsValue := r.Context().Value("claims")
-		if claimsValue == nil {
+	return func(c *gin.Context) error {
+		claimsValue, exists := c.Get("claims")
+		if !exists {
 			return httpx.Unauthorized("claims missing")
 		}
 
@@ -35,6 +36,6 @@ func RoleMiddleware(next httpx.AppHandler, roles ...models.Role) httpx.AppHandle
 			return httpx.Unauthorized("insufficient permissions")
 		}
 
-		return next(w, r)
+		return next(c)
 	}
 }

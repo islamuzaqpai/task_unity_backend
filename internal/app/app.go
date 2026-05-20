@@ -10,8 +10,8 @@ import (
 	"enactus/internal/routes"
 	"enactus/internal/service"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"log"
-	"net/http"
 )
 
 func Run() {
@@ -30,7 +30,12 @@ func Run() {
 		log.Fatalf("failed to create pool: %v", err)
 	}
 
-	defer pool.Close()
+	sqlDB, err := pool.DB()
+	if err != nil {
+		log.Fatalf("failed to get sql db: %v", err)
+	}
+
+	defer sqlDB.Close()
 
 	fmt.Println("Success", pool)
 
@@ -55,19 +60,14 @@ func Run() {
 	commentS := service.NewCommentService(commentR, taskS)
 	commentH := handler.NewCommentHandler(commentS)
 
-	mux := http.NewServeMux()
-	routes.UserRoutes(userH, mux, &jwtSecret)
-	routes.TaskRoutes(taskH, mux, &jwtSecret)
-	routes.DepartmentRoutes(departmentH, mux, &jwtSecret)
-	routes.AttendanceRoutes(attendanceH, mux, &jwtSecret)
-	routes.CommentRoutes(commentH, mux, &jwtSecret)
+	router := gin.New()
+	router.Use(gin.Logger(), gin.Recovery(), middleware.CORS())
 
-	muxWithCors := middleware.CORS(mux)
-	addr := ":8080"
-	server := &http.Server{
-		Addr:    addr,
-		Handler: muxWithCors,
-	}
+	routes.UserRoutes(userH, router, &jwtSecret)
+	routes.TaskRoutes(taskH, router, &jwtSecret)
+	routes.DepartmentRoutes(departmentH, router, &jwtSecret)
+	routes.AttendanceRoutes(attendanceH, router, &jwtSecret)
+	routes.CommentRoutes(commentH, router, &jwtSecret)
 
-	log.Fatal(server.ListenAndServe())
+	log.Fatal(router.Run(":8080"))
 }

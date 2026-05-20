@@ -7,19 +7,18 @@ import (
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"enactus/internal/service"
-	"encoding/json"
 	"errors"
-	"net/http"
+	"github.com/gin-gonic/gin"
 	"strconv"
 )
 
 type TaskHandlerInterface interface {
-	AddTask(w http.ResponseWriter, r *http.Request) error
-	GetAllTasks(w http.ResponseWriter, r *http.Request) error
-	GetAllTasksByAssigneeId(w http.ResponseWriter, r *http.Request) error
-	GetTaskById(w http.ResponseWriter, r *http.Request) error
-	UpdateTask(w http.ResponseWriter, r *http.Request) error
-	DeleteTask(w http.ResponseWriter, r *http.Request) error
+	AddTask(c *gin.Context) error
+	GetAllTasks(c *gin.Context) error
+	GetAllTasksByAssigneeId(c *gin.Context) error
+	GetTaskById(c *gin.Context) error
+	UpdateTask(c *gin.Context) error
+	DeleteTask(c *gin.Context) error
 }
 
 type TaskHandler struct {
@@ -30,16 +29,20 @@ func NewTaskHandler(taskS *service.TaskService) *TaskHandler {
 	return &TaskHandler{TaskS: taskS}
 }
 
-func (taskH *TaskHandler) AddTask(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (taskH *TaskHandler) AddTask(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	var req inputs.AddTaskInput
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
-	userId, ok := r.Context().Value("user_id").(int)
+	userIdValue, ok := c.Get("user_id")
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
+
+	userId, ok := userIdValue.(int)
 	if !ok {
 		return httpx.Unauthorized("user_id missing")
 	}
@@ -72,26 +75,31 @@ func (taskH *TaskHandler) AddTask(w http.ResponseWriter, r *http.Request) error 
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, addedTask)
+	httpx.WriteJSON(c, 200, addedTask)
 	return nil
 }
 
-func (taskH *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (taskH *TaskHandler) GetAllTasks(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	tasks, err := taskH.TaskS.GetAllTasks(ctx)
 	if err != nil {
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, tasks)
+	httpx.WriteJSON(c, 200, tasks)
 	return nil
 }
 
-func (taskH *TaskHandler) GetAllTasksByAssigneeId(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (taskH *TaskHandler) GetAllTasksByAssigneeId(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	userId, ok := r.Context().Value("user_id").(int)
+	userIdValue, ok := c.Get("user_id")
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
+
+	userId, ok := userIdValue.(int)
 	if !ok {
 		return httpx.Unauthorized("user_id missing")
 	}
@@ -101,14 +109,14 @@ func (taskH *TaskHandler) GetAllTasksByAssigneeId(w http.ResponseWriter, r *http
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, tasks)
+	httpx.WriteJSON(c, 200, tasks)
 	return nil
 }
 
-func (taskH *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (taskH *TaskHandler) GetTaskById(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid task ID")
@@ -119,27 +127,31 @@ func (taskH *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) er
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, task)
+	httpx.WriteJSON(c, 200, task)
 	return nil
 }
 
-func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (taskH *TaskHandler) UpdateTask(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	userId, ok := r.Context().Value("user_id").(int)
+	userIdValue, ok := c.Get("user_id")
 	if !ok {
 		return httpx.Unauthorized("user_id missing")
 	}
 
-	idStr := r.PathValue("id")
+	userId, ok := userIdValue.(int)
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
+
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid task ID")
 	}
 
 	var req inputs.UpdateTaskInput
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
@@ -154,19 +166,24 @@ func (taskH *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) err
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, updated)
+	httpx.WriteJSON(c, 200, updated)
 	return nil
 }
 
-func (taskH *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (taskH *TaskHandler) DeleteTask(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	userId, ok := r.Context().Value("user_id").(int)
+	userIdValue, ok := c.Get("user_id")
 	if !ok {
 		return httpx.Unauthorized("user_id missing")
 	}
 
-	idStr := r.PathValue("id")
+	userId, ok := userIdValue.(int)
+	if !ok {
+		return httpx.Unauthorized("user_id missing")
+	}
+
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid task ID")
@@ -177,6 +194,6 @@ func (taskH *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) err
 		return httpx.InternalError(err)
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(204)
 	return nil
 }

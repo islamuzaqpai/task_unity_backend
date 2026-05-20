@@ -5,21 +5,20 @@ import (
 	"enactus/internal/httpx"
 	"enactus/internal/models/inputs"
 	"enactus/internal/service"
-	"encoding/json"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"log"
-	"net/http"
 	"strconv"
 )
 
 type UserHandlerInterface interface {
-	Register(w http.ResponseWriter, r *http.Request) error
-	GetAllUsers(w http.ResponseWriter, r *http.Request) error
-	GetUserById(w http.ResponseWriter, r *http.Request) error
-	Login(w http.ResponseWriter, r *http.Request) error
-	UpdateUserProfile(w http.ResponseWriter, r *http.Request) error
-	UpdateUserPassword(w http.ResponseWriter, r *http.Request) error
-	DeleteUser(w http.ResponseWriter, r *http.Request) error
+	Register(c *gin.Context) error
+	GetAllUsers(c *gin.Context) error
+	GetUserById(c *gin.Context) error
+	Login(c *gin.Context) error
+	UpdateUserProfile(c *gin.Context) error
+	UpdateUserPassword(c *gin.Context) error
+	DeleteUser(c *gin.Context) error
 }
 
 type UserHandler struct {
@@ -30,12 +29,11 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 	return &UserHandler{UserService: userService}
 }
 
-func (userH UserHandler) Register(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (userH UserHandler) Register(c *gin.Context) error {
+	ctx := c.Request.Context()
 	var req inputs.RegisterInput
 
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid JSON")
 	}
 
@@ -49,27 +47,26 @@ func (userH UserHandler) Register(w http.ResponseWriter, r *http.Request) error 
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusCreated, user)
+	httpx.WriteJSON(c, 201, user)
 	return nil
 }
 
-func (userH *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (userH *UserHandler) GetAllUsers(c *gin.Context) error {
+	ctx := c.Request.Context()
 	users, err := userH.UserService.GetAllUsers(ctx)
 	if err != nil {
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, users)
+	httpx.WriteJSON(c, 200, users)
 	return nil
 }
 
-func (userH *UserHandler) Login(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (userH *UserHandler) Login(c *gin.Context) error {
+	ctx := c.Request.Context()
 
 	var req inputs.LoginInput
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
@@ -78,14 +75,14 @@ func (userH *UserHandler) Login(w http.ResponseWriter, r *http.Request) error {
 		return httpx.Unauthorized("invalid email or password")
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": tokenStr})
+	httpx.WriteJSON(c, 200, map[string]string{"token": tokenStr})
 	return nil
 }
 
-func (userH *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (userH *UserHandler) GetUserById(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid ID")
@@ -96,22 +93,21 @@ func (userH *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) er
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, user)
+	httpx.WriteJSON(c, 200, user)
 	return nil
 }
 
-func (userH *UserHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (userH *UserHandler) UpdateUserProfile(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid ID")
 	}
 
 	var req inputs.UpdateUserProfileInput
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
@@ -120,22 +116,21 @@ func (userH *UserHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Reque
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, updated)
+	httpx.WriteJSON(c, 200, updated)
 	return nil
 }
 
-func (userH *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (userH *UserHandler) UpdateUserPassword(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid ID")
 	}
 
 	var req inputs.UpdatePasswordInput
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		return httpx.BadRequest("invalid request body")
 	}
 
@@ -144,14 +139,14 @@ func (userH *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Requ
 		return httpx.InternalError(err)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, "OK")
+	httpx.WriteJSON(c, 200, "OK")
 	return nil
 }
 
-func (userH *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
+func (userH *UserHandler) DeleteUser(c *gin.Context) error {
+	ctx := c.Request.Context()
 
-	idStr := r.PathValue("id")
+	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return httpx.BadRequest("invalid ID")
@@ -162,6 +157,6 @@ func (userH *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) err
 		return httpx.InternalError(err)
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(204)
 	return nil
 }
