@@ -5,7 +5,7 @@ import (
 	"enactus/internal/models/inputs"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type UsersRolesRepositoryInterface interface {
@@ -14,31 +14,33 @@ type UsersRolesRepositoryInterface interface {
 }
 
 type UsersRolesRepository struct {
-	Pool *pgxpool.Pool
+	DB *gorm.DB
+}
+
+func NewUsersRolesRepository(db *gorm.DB) *UsersRolesRepository {
+	return &UsersRolesRepository{DB: db}
 }
 
 func (usersRolesRepo *UsersRolesRepository) SetUserRole(ctx context.Context, in inputs.UsersRolesInput) error {
-	_, err := usersRolesRepo.Pool.Exec(ctx,
-		"INSERT INTO users_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET role_id = EXCLUDED.role_id",
+	res := usersRolesRepo.DB.WithContext(ctx).Exec(
+		"INSERT INTO users_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET role_id = EXCLUDED.role_id",
 		in.UserId,
 		in.RoleId,
 	)
-
-	if err != nil {
-		return fmt.Errorf("failed to scan: %w", err)
+	if res.Error != nil {
+		return fmt.Errorf("failed to scan: %w", res.Error)
 	}
 
 	return nil
 }
 
 func (usersRolesRepo *UsersRolesRepository) DeleteUserRole(ctx context.Context, userId int) error {
-	_, err := usersRolesRepo.Pool.Exec(ctx,
-		"DELETE FROM users_roles WHERE user_id = $1",
-		userId,
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to delete: %w", err)
+	res := usersRolesRepo.DB.WithContext(ctx).
+		Table("users_roles").
+		Where("user_id = ?", userId).
+		Delete(&struct{}{})
+	if res.Error != nil {
+		return fmt.Errorf("failed to delete: %w", res.Error)
 	}
 
 	return nil

@@ -2,15 +2,14 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"errors"
 	"fmt"
-	"strings"
+	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type UserRepositoryInterface interface {
@@ -25,29 +24,22 @@ type UserRepositoryInterface interface {
 }
 
 type UserRepository struct {
-	Pool *pgxpool.Pool
+	DB *gorm.DB
 }
 
-func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
-	return &UserRepository{Pool: pool}
+func NewUserRepository(db *gorm.DB) *UserRepository {
+	return &UserRepository{DB: db}
 }
 
 func (userRepo *UserRepository) GetUserById(ctx context.Context, id int) (*models.User, error) {
-	query := `SELECT id, full_name, email, department_id, created_at, updated_at, deleted_at FROM users WHERE id = $1`
-
 	var user models.User
-	err := userRepo.Pool.QueryRow(ctx, query, id).Scan(
-		&user.Id,
-		&user.FullName,
-		&user.Email,
-		&user.DepartmentId,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-		&user.DeletedAt,
-	)
-
+	err := userRepo.DB.WithContext(ctx).
+		Table("users").
+		Select("id", "full_name", "email", "department_id", "created_at", "updated_at", "deleted_at").
+		Where("id = ?", id).
+		Take(&user).Error
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
@@ -57,149 +49,100 @@ func (userRepo *UserRepository) GetUserById(ctx context.Context, id int) (*model
 }
 
 func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User, error) {
-	query := `SELECT id, full_name, email, department_id, created_at, updated_at, deleted_at FROM users`
-
-	rows, err := userRepo.Pool.Query(ctx, query)
+	var users []models.User
+	err := userRepo.DB.WithContext(ctx).
+		Table("users").
+		Select("id", "full_name", "email", "department_id", "created_at", "updated_at", "deleted_at").
+		Find(&users).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch users: %w", err)
-	}
-	defer rows.Close()
-
-	var users []models.User
-	for rows.Next() {
-		var user models.User
-		err = rows.Scan(
-			&user.Id,
-			&user.FullName,
-			&user.Email,
-			&user.DepartmentId,
-			&user.CreatedAt,
-			&user.UpdatedAt,
-			&user.DeletedAt,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan user row: %w", err)
-		}
-		users = append(users, user)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
 	return users, nil
 }
 
 func (userRepo *UserRepository) GetAuthUserByEmail(ctx context.Context, email string) (*inputs.AuthUser, string, error) {
-	query := `
-	SELECT users.id, users.email, users.password, users.deleted_at, roles.name
-	FROM users
-	JOIN users_roles ON users.id = users_roles.user_id
-	JOIN roles ON users_roles.role_id = roles.id
-	WHERE users.email = $1 AND users.deleted_at IS NULL
-	`
+	var row struct {
+		Id        int
+		Email     string
+		Password  string
+		DeletedAt *time.Time
+		Role      string
+	}
 
-	var authUser inputs.AuthUser
-	var role string
-
-	err := userRepo.Pool.QueryRow(ctx, query, email).Scan(
-		&authUser.Id,
-		&authUser.Email,
-		&authUser.Password,
-		&authUser.DeletedAt,
-		&role,
-	)
-
+	err := userRepo.DB.WithContext(ctx).
+		Table("users").
+		Select("users.id", "users.email", "users.password", "users.deleted_at", "roles.name as role").
+		Joins("JOIN users_roles ON users.id = users_roles.user_id").
+		Joins("JOIN roles ON users_roles.role_id = roles.id").
+		Where("users.email = ? AND users.deleted_at IS NULL", email).
+		Take(&row).Error
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, "", apperrors.ErrNotFound
 		}
 		return nil, "", fmt.Errorf("failed to get auth user by email: %w", err)
 	}
 
-	return &authUser, role, nil
+	return &inputs.AuthUser{
+		Id:        row.Id,
+		Email:     row.Email,
+		Password:  row.Password,
+		DeletedAt: row.DeletedAt,
+	}, row.Role, nil
 }
 
 func (userRepo *UserRepository) EmailExists(ctx context.Context, email *string) (bool, error) {
-	query := `SELECT EXISTS (SELECT 1 FROM users WHERE email = $1)`
-	var exists bool
-
-	err := userRepo.Pool.QueryRow(ctx, query, email).Scan(&exists)
+	var count int64
+	err := userRepo.DB.WithContext(ctx).
+		Table("users").
+		Where("email = ?", email).
+		Count(&count).Error
 	if err != nil {
 		return false, fmt.Errorf("failed to check if email exists: %w", err)
 	}
 
-	return exists, nil
+	return count > 0, nil
 }
 
 func (userRepo *UserRepository) AddUser(ctx context.Context, user *models.User) error {
-	tx, err := userRepo.Pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	query := `INSERT INTO users (full_name, email, password, department_id) 
-			  VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
-
-	err = tx.QueryRow(ctx, query, user.FullName, user.Email, user.Password, user.DepartmentId).
-		Scan(&user.Id, &user.CreatedAt, &user.UpdatedAt)
-
-	if err != nil {
-		return fmt.Errorf("failed to add user: %w", err)
-	}
-
-	query = `INSERT INTO users_roles (user_id, role_id) VALUES ($1, (SELECT id FROM roles WHERE name = 'user'))`
-	res, err := tx.Exec(ctx, query, user.Id)
-
-	if err != nil {
-		if res.RowsAffected() == 0 {
-			return apperrors.ErrNotFound
+	return userRepo.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Table("users").Create(user).Error; err != nil {
+			return fmt.Errorf("failed to add user: %w", err)
 		}
-		return fmt.Errorf("failed to assign role to user: %w", err)
-	}
 
-	err = tx.Commit(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
+		res := tx.Exec(
+			"INSERT INTO users_roles (user_id, role_id) VALUES (?, (SELECT id FROM roles WHERE name = 'user'))",
+			user.Id,
+		)
+		if res.Error != nil {
+			return fmt.Errorf("failed to assign role to user: %w", res.Error)
+		}
 
-	return nil
+		return nil
+	})
 }
 
 func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, in inputs.UpdateUserProfileInput) error {
-	query := `UPDATE users SET `
-	args := []any{}
-	i := 1
-
+	updates := map[string]any{}
 	if in.FullName != nil {
-		query += fmt.Sprintf("full_name = $%d,", i)
-		args = append(args, *in.FullName)
-		i++
+		updates["full_name"] = *in.FullName
 	}
-
 	if in.Email != nil {
-		query += fmt.Sprintf("email = $%d,", i)
-		args = append(args, *in.Email)
-		i++
+		updates["email"] = *in.Email
 	}
-
-	if len(args) == 0 {
+	if len(updates) == 0 {
 		return fmt.Errorf("no fields to update")
 	}
 
-	query = strings.TrimSuffix(query, ",")
-	query += fmt.Sprintf(" WHERE id = $%d", i)
-	args = append(args, id)
-
-	result, err := userRepo.Pool.Exec(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to update user profile: %w", err)
+	res := userRepo.DB.WithContext(ctx).
+		Table("users").
+		Where("id = ?", id).
+		UpdateColumns(updates)
+	if res.Error != nil {
+		return fmt.Errorf("failed to update user profile: %w", res.Error)
 	}
-
-	if result.RowsAffected() == 0 {
+	if res.RowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
 
@@ -207,17 +150,14 @@ func (userRepo *UserRepository) UpdateUserProfile(ctx context.Context, id int, i
 }
 
 func (userRepo *UserRepository) UpdateUserPassword(ctx context.Context, id int, newPassword string) error {
-	cmdTag, err := userRepo.Pool.Exec(ctx,
-		"UPDATE users SET password = $1 WHERE id = $2",
-		newPassword,
-		id,
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to update user password: %w", err)
+	res := userRepo.DB.WithContext(ctx).
+		Table("users").
+		Where("id = ?", id).
+		UpdateColumn("password", newPassword)
+	if res.Error != nil {
+		return fmt.Errorf("failed to update user password: %w", res.Error)
 	}
-
-	if cmdTag.RowsAffected() == 0 {
+	if res.RowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
 
@@ -225,16 +165,14 @@ func (userRepo *UserRepository) UpdateUserPassword(ctx context.Context, id int, 
 }
 
 func (userRepo *UserRepository) DeleteUser(ctx context.Context, id int) error {
-	cmdTag, err := userRepo.Pool.Exec(ctx,
-		"UPDATE users SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
-		id,
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
+	res := userRepo.DB.WithContext(ctx).
+		Table("users").
+		Where("id = ? AND deleted_at IS NULL", id).
+		UpdateColumn("deleted_at", gorm.Expr("now()"))
+	if res.Error != nil {
+		return fmt.Errorf("failed to delete user: %w", res.Error)
 	}
-
-	if cmdTag.RowsAffected() == 0 {
+	if res.RowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
 

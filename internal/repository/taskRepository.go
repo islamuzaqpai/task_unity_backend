@@ -2,14 +2,13 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type TaskRepositoryInterface interface {
@@ -20,33 +19,17 @@ type TaskRepositoryInterface interface {
 	UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) (*models.Task, error)
 	DeleteTask(ctx context.Context, id int) error
 }
+
 type TaskRepository struct {
-	Pool *pgxpool.Pool
+	DB *gorm.DB
 }
 
-func NewTaskRepo(pool *pgxpool.Pool) *TaskRepository {
-	return &TaskRepository{Pool: pool}
+func NewTaskRepo(db *gorm.DB) *TaskRepository {
+	return &TaskRepository{DB: db}
 }
 
 func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) (*models.Task, error) {
-	query := `INSERT INTO tasks (title, description, deadline, department_id, creator_id, assignee_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7)
-				RETURNING id, created_at, updated_at, deleted_at`
-
-	err := taskRepo.Pool.QueryRow(ctx, query,
-		task.Title,
-		task.Description,
-		task.Deadline,
-		task.DepartmentId,
-		task.CreatorId,
-		task.AssigneeId,
-		task.Status,
-	).Scan(
-		&task.Id,
-		&task.CreatedAt,
-		&task.UpdatedAt,
-		&task.DeletedAt,
-	)
-
+	err := taskRepo.DB.WithContext(ctx).Table("tasks").Create(task).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to add a task: %w", err)
 	}
@@ -55,26 +38,16 @@ func (taskRepo *TaskRepository) AddTask(ctx context.Context, task *models.Task) 
 }
 
 func (taskRepo *TaskRepository) GetTaskById(ctx context.Context, id int) (*models.Task, error) {
-	query := `SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at FROM tasks WHERE id = $1 AND deleted_at IS NULL`
 	var task models.Task
-	err := taskRepo.Pool.QueryRow(ctx, query, id).Scan(
-		&task.Id,
-		&task.Title,
-		&task.Description,
-		&task.Deadline,
-		&task.DepartmentId,
-		&task.CreatorId,
-		&task.AssigneeId,
-		&task.Status,
-		&task.CreatedAt,
-		&task.UpdatedAt,
-	)
-
+	err := taskRepo.DB.WithContext(ctx).
+		Table("tasks").
+		Select("id", "title", "description", "deadline", "department_id", "creator_id", "assignee_id", "status", "created_at", "updated_at").
+		Where("id = ? AND deleted_at IS NULL", id).
+		Take(&task).Error
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperrors.ErrNotFound
 		}
-
 		return nil, fmt.Errorf("failed to get task by id: %w", err)
 	}
 
@@ -82,122 +55,70 @@ func (taskRepo *TaskRepository) GetTaskById(ctx context.Context, id int) (*model
 }
 
 func (taskRepo *TaskRepository) GetAllTasks(ctx context.Context) ([]models.Task, error) {
-	query := `SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at, deleted_at FROM tasks WHERE deleted_at is null`
-
-	rows, err := taskRepo.Pool.Query(ctx, query)
-
+	var tasks []models.Task
+	err := taskRepo.DB.WithContext(ctx).
+		Table("tasks").
+		Select("id", "title", "description", "deadline", "department_id", "creator_id", "assignee_id", "status", "created_at", "updated_at", "deleted_at").
+		Where("deleted_at IS NULL").
+		Find(&tasks).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to select all tasks: %w", err)
-	}
-	defer rows.Close()
-
-	var tasks []models.Task
-
-	for rows.Next() {
-		var task models.Task
-
-		err = rows.Scan(
-			&task.Id,
-			&task.Title,
-			&task.Description,
-			&task.Deadline,
-			&task.DepartmentId,
-			&task.CreatorId,
-			&task.AssigneeId,
-			&task.Status,
-			&task.CreatedAt,
-			&task.UpdatedAt,
-			&task.DeletedAt,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan: %w", err)
-		}
-
-		tasks = append(tasks, task)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
 	return tasks, nil
 }
 
 func (taskRepo *TaskRepository) GetAllTasksByAssigneeId(ctx context.Context, assigneeId int) ([]models.Task, error) {
-	query := `SELECT id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at, deleted_at FROM tasks WHERE deleted_at is null AND assignee_id = $1`
-
-	rows, err := taskRepo.Pool.Query(ctx, query, assigneeId)
+	var tasks []models.Task
+	err := taskRepo.DB.WithContext(ctx).
+		Table("tasks").
+		Select("id", "title", "description", "deadline", "department_id", "creator_id", "assignee_id", "status", "created_at", "updated_at", "deleted_at").
+		Where("deleted_at IS NULL AND assignee_id = ?", assigneeId).
+		Find(&tasks).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to query: %w", err)
-	}
-	defer rows.Close()
-
-	var tasks []models.Task
-	for rows.Next() {
-		var task models.Task
-
-		err = rows.Scan(
-			&task.Id,
-			&task.Title,
-			&task.Description,
-			&task.Deadline,
-			&task.DepartmentId,
-			&task.CreatorId,
-			&task.AssigneeId,
-			&task.Status,
-			&task.CreatedAt,
-			&task.UpdatedAt,
-			&task.DeletedAt,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan: %w", err)
-		}
-
-		tasks = append(tasks, task)
-	}
-
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", rows.Err())
 	}
 
 	return tasks, nil
 }
 
 func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in inputs.UpdateTaskInput) (*models.Task, error) {
-	query := `UPDATE tasks SET title = COALESCE($1, title),
-								description = COALESCE($2, description),
-								deadline = COALESCE($3, deadline),
-								assignee_id = COALESCE($4, assignee_id),
-								status = COALESCE($5::task_status, status),
-								updated_at = NOW()
-				WHERE id = $6 AND deleted_at IS NULL
-				RETURNING id, title, description, deadline, department_id, creator_id, assignee_id, status, created_at, updated_at, deleted_at`
+	updates := map[string]any{
+		"updated_at": gorm.Expr("NOW()"),
+	}
+	if in.Title != nil {
+		updates["title"] = *in.Title
+	}
+	if in.Description != nil {
+		updates["description"] = *in.Description
+	}
+	if in.Deadline != nil {
+		updates["deadline"] = *in.Deadline
+	}
+	if in.AssigneeId != nil {
+		updates["assignee_id"] = *in.AssigneeId
+	}
+	if in.Status != nil {
+		updates["status"] = *in.Status
+	}
+
+	res := taskRepo.DB.WithContext(ctx).
+		Table("tasks").
+		Where("id = ? AND deleted_at IS NULL", id).
+		UpdateColumns(updates)
+	if res.Error != nil {
+		return nil, fmt.Errorf("failed to scan: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return nil, fmt.Errorf("failed to scan: %w", gorm.ErrRecordNotFound)
+	}
 
 	var task models.Task
-	err := taskRepo.Pool.QueryRow(ctx, query,
-		in.Title,
-		in.Description,
-		in.Deadline,
-		in.AssigneeId,
-		in.Status,
-		id,
-	).Scan(
-		&task.Id,
-		&task.Title,
-		&task.Description,
-		&task.Deadline,
-		&task.DepartmentId,
-		&task.CreatorId,
-		&task.AssigneeId,
-		&task.Status,
-		&task.CreatedAt,
-		&task.UpdatedAt,
-		&task.DeletedAt,
-	)
-
+	err := taskRepo.DB.WithContext(ctx).
+		Table("tasks").
+		Select("id", "title", "description", "deadline", "department_id", "creator_id", "assignee_id", "status", "created_at", "updated_at", "deleted_at").
+		Where("id = ? AND deleted_at IS NULL", id).
+		Take(&task).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan: %w", err)
 	}
@@ -206,18 +127,15 @@ func (taskRepo *TaskRepository) UpdateTask(ctx context.Context, id int, in input
 }
 
 func (taskRepo *TaskRepository) DeleteTask(ctx context.Context, id int) error {
-	query := `UPDATE tasks SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
-
-	res, err := taskRepo.Pool.Exec(ctx,
-		query,
-		id)
-
-	if res.RowsAffected() == 0 {
+	res := taskRepo.DB.WithContext(ctx).
+		Table("tasks").
+		Where("id = ? AND deleted_at IS NULL", id).
+		UpdateColumn("deleted_at", gorm.Expr("now()"))
+	if res.RowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
-
-	if err != nil {
-		return fmt.Errorf("failed to delete a task: %w", err)
+	if res.Error != nil {
+		return fmt.Errorf("failed to delete a task: %w", res.Error)
 	}
 
 	return nil

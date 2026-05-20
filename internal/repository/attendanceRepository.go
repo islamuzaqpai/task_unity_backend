@@ -2,15 +2,13 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"enactus/internal/apperrors"
 	"enactus/internal/models"
 	"enactus/internal/models/inputs"
 	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type AttendanceRepositoryInterface interface {
@@ -22,31 +20,15 @@ type AttendanceRepositoryInterface interface {
 }
 
 type AttendanceRepository struct {
-	Pool *pgxpool.Pool
+	DB *gorm.DB
 }
 
-func NewAttendanceRepository(pool *pgxpool.Pool) *AttendanceRepository {
-	return &AttendanceRepository{Pool: pool}
+func NewAttendanceRepository(db *gorm.DB) *AttendanceRepository {
+	return &AttendanceRepository{DB: db}
 }
 
 func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, attendance *models.Attendance) error {
-	query := `INSERT INTO attendance (user_id, date, department_id, status, comment, marked_by) VALUES ($1, $2, $3, $4, $5, $6) 
-			RETURNING id, created_at, updated_at, deleted_at`
-
-	err := attendanceRepo.Pool.QueryRow(ctx, query,
-		attendance.UserId,
-		attendance.Date,
-		attendance.DepartmentId,
-		attendance.Status,
-		attendance.Comment,
-		attendance.MarkedBy,
-	).Scan(
-		&attendance.Id,
-		&attendance.CreatedAt,
-		&attendance.UpdatedAt,
-		&attendance.DeletedAt,
-	)
-
+	err := attendanceRepo.DB.WithContext(ctx).Table("attendance").Create(attendance).Error
 	if err != nil {
 		return fmt.Errorf("failed to scan: %w", err)
 	}
@@ -55,24 +37,14 @@ func (attendanceRepo *AttendanceRepository) AddAttendance(ctx context.Context, a
 }
 
 func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Context, id int) (*models.Attendance, error) {
-	query := `SELECT id, date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE id = $1 AND deleted_at IS NULL`
-
 	var attendance models.Attendance
-	err := attendanceRepo.Pool.QueryRow(ctx, query, id).
-		Scan(
-			&attendance.Id,
-			&attendance.Date,
-			&attendance.UserId,
-			&attendance.DepartmentId,
-			&attendance.Status,
-			&attendance.Comment,
-			&attendance.MarkedBy,
-			&attendance.CreatedAt,
-			&attendance.UpdatedAt,
-		)
-
+	err := attendanceRepo.DB.WithContext(ctx).
+		Table("attendance").
+		Select("id", "date", "user_id", "department_id", "status", "comment", "marked_by", "created_at", "updated_at").
+		Where("id = ? AND deleted_at IS NULL", id).
+		Take(&attendance).Error
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to scan: %w", err)
@@ -82,83 +54,42 @@ func (attendanceRepo *AttendanceRepository) GetAttendanceById(ctx context.Contex
 }
 
 func (attendanceRepo *AttendanceRepository) GetAllAttendances(ctx context.Context) ([]models.Attendance, error) {
-	query := `SELECT id, date, user_id, department_id, status, comment, marked_by, created_at, updated_at FROM attendance WHERE deleted_at is null`
-
-	rows, err := attendanceRepo.Pool.Query(ctx, query)
-
+	var attendances []models.Attendance
+	err := attendanceRepo.DB.WithContext(ctx).
+		Table("attendance").
+		Select("id", "date", "user_id", "department_id", "status", "comment", "marked_by", "created_at", "updated_at").
+		Where("deleted_at IS NULL").
+		Find(&attendances).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all attendances: %w", err)
-	}
-	defer rows.Close()
-
-	var attendances []models.Attendance
-	for rows.Next() {
-		var attendance models.Attendance
-
-		err = rows.Scan(
-			&attendance.Id,
-			&attendance.Date,
-			&attendance.UserId,
-			&attendance.DepartmentId,
-			&attendance.Status,
-			&attendance.Comment,
-			&attendance.MarkedBy,
-			&attendance.CreatedAt,
-			&attendance.UpdatedAt,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan: %w", err)
-		}
-
-		attendances = append(attendances, attendance)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
 	return attendances, nil
 }
 
 func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context, id int, in *inputs.UpdateAttendanceInput) error {
-	query := `UPDATE attendance SET `
-	var args []any
-	i := 1
-
+	updates := map[string]any{}
 	if in.Status != nil {
-		query += fmt.Sprintf(" status = $%d,", i)
-		args = append(args, in.Status)
-		i++
-
+		updates["status"] = *in.Status
 		if in.MarkedBy != nil {
-			query += fmt.Sprintf(" marked_by = $%d,", i)
-			args = append(args, in.MarkedBy)
-			i++
+			updates["marked_by"] = *in.MarkedBy
 		}
 	}
-
 	if in.Comment != nil {
-		query += fmt.Sprintf(" comment = $%d,", i)
-		args = append(args, in.Comment)
-		i++
+		updates["comment"] = *in.Comment
 	}
-
-	if len(args) == 0 {
+	if len(updates) == 0 {
 		return fmt.Errorf("no fields to update")
 	}
 
-	query = strings.TrimSuffix(query, ",")
-	query += fmt.Sprintf(" WHERE id = $%d", i)
-	args = append(args, id)
-
-	result, err := attendanceRepo.Pool.Exec(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to update attendance: %w", err)
+	res := attendanceRepo.DB.WithContext(ctx).
+		Table("attendance").
+		Where("id = ?", id).
+		UpdateColumns(updates)
+	if res.Error != nil {
+		return fmt.Errorf("failed to update attendance: %w", res.Error)
 	}
-
-	if result.RowsAffected() == 0 {
+	if res.RowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
 
@@ -166,16 +97,15 @@ func (attendanceRepo *AttendanceRepository) UpdateAttendance(ctx context.Context
 }
 
 func (attendanceRepo *AttendanceRepository) DeleteAttendance(ctx context.Context, id int) error {
-	query := `UPDATE attendance SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
-
-	res, err := attendanceRepo.Pool.Exec(ctx, query, id)
-
-	if res.RowsAffected() == 0 {
+	res := attendanceRepo.DB.WithContext(ctx).
+		Table("attendance").
+		Where("id = ? AND deleted_at IS NULL", id).
+		UpdateColumn("deleted_at", gorm.Expr("now()"))
+	if res.RowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
-
-	if err != nil {
-		return fmt.Errorf("failed to delete an attendance: %w", err)
+	if res.Error != nil {
+		return fmt.Errorf("failed to delete an attendance: %w", res.Error)
 	}
 
 	return nil
