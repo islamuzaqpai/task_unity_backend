@@ -5,28 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7c99052a-17d1-43de-8061-047cee2c34d9" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/db-forest-config.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/db-forest-config.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/init.sql" beforeDir="false" afterPath="$PROJECT_DIR$/init.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/app/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/app/app.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/database/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/database/db.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/handler/attendanceHandler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/attendanceHandler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/handler/commentHandler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/commentHandler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/handler/departmentHandler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/departmentHandler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/handler/taskHandler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/taskHandler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/handler/userHandler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/userHandler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/httpx/errors.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/httpx/errors.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/httpx/response.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/httpx/response.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/middleware/authMiddleware.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/middleware/authMiddleware.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/middleware/corsMiddleware.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/middleware/corsMiddleware.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/middleware/roleMiddleware.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/middleware/roleMiddleware.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/repository/attendanceRepository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/repository/attendanceRepository.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/repository/commentRepository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/repository/commentRepository.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/repository/departmentRepository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/repository/departmentRepository.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/repository/roleRepository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/repository/roleRepository.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/repository/taskRepository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/repository/taskRepository.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/repository/userRepository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/repository/userRepository.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/repository/usersRolesRepository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/repository/usersRolesRepository.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/routes/routes.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/routes/routes.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -35,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="54" />
+    <option name="cachedIndexableFilesCount" value="61" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -81,7 +65,7 @@
     "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "refactoring",
+    "git-widget-placeholder": "refacroring/microservice",
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "C:/toDoUnity/task_unity_backend",
     "node.js.detected.package.eslint": "true",
@@ -149,7 +133,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="main" />
+                        <option value="refacroring/microservice" />
                       </list>
                     </value>
                   </entry>

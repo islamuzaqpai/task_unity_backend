@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="task_unity_db@localhost" uuid="cb865b16-0084-4535-9baa-bd5754d0d7f4">
+    <data-source source="LOCAL" name="task_unity_db@localhost" uuid="fdedbbab-54d5-4788-aa01-4c708fbb3a2c">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>

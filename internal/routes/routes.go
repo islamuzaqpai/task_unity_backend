@@ -58,6 +58,23 @@ func AttendanceRoutes(attendanceH *handler.AttendanceHandler, router gin.IRoutes
 		middleware.RoleMiddleware(attendanceH.DeleteAttendance, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
 }
 
+func AttendanceSessionRoutes(attendanceSessionH *handler.AttendanceSessionHandler, router gin.IRoutes, jwtSecret *auth.JWTSecret) {
+	router.POST("/attendance/sessions", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceSessionH.CreateSession, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	router.GET("/attendance/sessions", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceSessionH.ListSessions, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	router.GET("/attendance/sessions/:id", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceSessionH.GetSession, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	router.PATCH("/attendance/sessions/:id/entries", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceSessionH.BulkUpsertEntries, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+
+	router.PATCH("/attendance/sessions/:id/publish", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
+		middleware.RoleMiddleware(attendanceSessionH.PublishSession, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
+}
+
 func CommentRoutes(commentH *handler.CommentHandler, router gin.IRoutes, jwtSecret *auth.JWTSecret) {
 	router.POST("/comments/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
 		middleware.RoleMiddleware(commentH.AddComment, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))

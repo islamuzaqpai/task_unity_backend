@@ -56,6 +56,10 @@ func Run() {
 	attendanceS := service.NewAttendanceService(attendanceR, userS)
 	attendanceH := handler.NewAttendanceHandler(attendanceS)
 
+	attendanceSessionR := repository.NewAttendanceSessionRepository(pool)
+	attendanceSessionS := service.NewAttendanceSessionService(attendanceSessionR, userR, departmentR)
+	attendanceSessionH := handler.NewAttendanceSessionHandler(attendanceSessionS)
+
 	commentR := repository.NewCommentRepository(pool)
 	commentS := service.NewCommentService(commentR, taskS)
 	commentH := handler.NewCommentHandler(commentS)
@@ -67,6 +71,7 @@ func Run() {
 	routes.TaskRoutes(taskH, router, &jwtSecret)
 	routes.DepartmentRoutes(departmentH, router, &jwtSecret)
 	routes.AttendanceRoutes(attendanceH, router, &jwtSecret)
+	routes.AttendanceSessionRoutes(attendanceSessionH, router, &jwtSecret)
 	routes.CommentRoutes(commentH, router, &jwtSecret)
 
 	log.Fatal(router.Run(":8080"))
