@@ -75,6 +75,12 @@ func AttendanceSessionRoutes(attendanceSessionH *handler.AttendanceSessionHandle
 		middleware.RoleMiddleware(attendanceSessionH.PublishSession, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))
 }
 
+func InternalServiceRoutes(internalDataH *handler.InternalDataHandler, router gin.IRoutes, serviceToken string) {
+	router.GET("/internal/users/:id", middleware.InternalServiceMiddleware(serviceToken), httpx.WrapHandler(internalDataH.GetUserById))
+	router.GET("/internal/departments/:id", middleware.InternalServiceMiddleware(serviceToken), httpx.WrapHandler(internalDataH.GetDepartmentById))
+	router.GET("/internal/departments/:id/users", middleware.InternalServiceMiddleware(serviceToken), httpx.WrapHandler(internalDataH.GetUsersByDepartmentId))
+}
+
 func CommentRoutes(commentH *handler.CommentHandler, router gin.IRoutes, jwtSecret *auth.JWTSecret) {
 	router.POST("/comments/create", httpx.WrapHandler(middleware.AuthMiddleware(jwtSecret,
 		middleware.RoleMiddleware(commentH.AddComment, models.Role{Name: "admin"}, models.Role{Name: "manager"}))))

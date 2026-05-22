@@ -5,12 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7c99052a-17d1-43de-8061-047cee2c34d9" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/db-forest-config.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/db-forest-config.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.json" beforeDir="false" afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/init.sql" beforeDir="false" afterPath="$PROJECT_DIR$/init.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/app/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/app/app.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/config/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/config/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/handler/attendanceSessionHandler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/handler/attendanceSessionHandler.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/repository/userRepository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/repository/userRepository.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/internal/routes/routes.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/routes/routes.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -19,7 +23,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="61" />
+    <option name="cachedIndexableFilesCount" value="72" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -65,13 +69,13 @@
     "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "refacroring/microservice",
+    "git-widget-placeholder": "refactoring",
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "C:/toDoUnity/task_unity_backend",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "editor.preferences.fonts.default",
+    "settings.editor.selected.configurable": "ml.llm.agents.accounts",
     "to.speed.mode.migration.done": "true"
   },
   "keyToStringList": {

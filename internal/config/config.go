@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -20,13 +21,24 @@ type DatabaseConfig struct {
 	User     string `json:"user"`
 	Password string `json:"password"`
 	DBName   string `json:"db_name"`
-	SSLMode  string `json:"ssl_modeMode"`
+	SSLMode  string `json:"ssl_mode"`
+}
+
+type AttendanceSessionServiceConfig struct {
+	BaseURL        string `json:"base_url"`
+	TimeoutSeconds int    `json:"timeout_seconds"`
+}
+
+type InternalServiceConfig struct {
+	Token string `json:"token"`
 }
 
 type Config struct {
-	Server    ServerConfig
-	Database  DatabaseConfig
-	JWTSecret string `json:"jwt_secret"`
+	Server                   ServerConfig                   `json:"server"`
+	Database                 DatabaseConfig                 `json:"database"`
+	AttendanceSessionService AttendanceSessionServiceConfig `json:"attendance_session_service"`
+	InternalService          InternalServiceConfig          `json:"internal_service"`
+	JWTSecret                string                         `json:"jwt_secret"`
 }
 
 func LoadConfig(filename string) (*Config, error) {
@@ -42,6 +54,8 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
+	ApplyDefaults(&cfg)
+	applyEnvOverrides(&cfg)
 	return &cfg, nil
 }
 
@@ -90,6 +104,10 @@ func ApplyDefaults(cfg *Config) {
 	if cfg.Database.SSLMode == "" {
 		cfg.Database.SSLMode = "disabled"
 	}
+
+	if cfg.AttendanceSessionService.TimeoutSeconds == 0 {
+		cfg.AttendanceSessionService.TimeoutSeconds = 10
+	}
 }
 
 func NewDefaultConfig() *Config {
@@ -105,5 +123,43 @@ func NewDefaultConfig() *Config {
 			Port:    5432,
 			SSLMode: "disable",
 		},
+	}
+}
+
+func applyEnvOverrides(cfg *Config) {
+	applyStringEnv("SERVER_HOST", &cfg.Server.Host)
+	applyIntEnv("SERVER_PORT", &cfg.Server.Port)
+	applyIntEnv("SERVER_READ_TIMEOUT", &cfg.Server.ReadTimeout)
+	applyIntEnv("SERVER_WRITE_TIMEOUT", &cfg.Server.WriteTimeout)
+
+	applyStringEnv("DATABASE_HOST", &cfg.Database.Host)
+	applyIntEnv("DATABASE_PORT", &cfg.Database.Port)
+	applyStringEnv("DATABASE_USER", &cfg.Database.User)
+	applyStringEnv("DATABASE_PASSWORD", &cfg.Database.Password)
+	applyStringEnv("DATABASE_NAME", &cfg.Database.DBName)
+	applyStringEnv("DATABASE_SSLMODE", &cfg.Database.SSLMode)
+
+	applyStringEnv("ATTENDANCE_SESSION_SERVICE_BASE_URL", &cfg.AttendanceSessionService.BaseURL)
+	applyIntEnv("ATTENDANCE_SESSION_SERVICE_TIMEOUT_SECONDS", &cfg.AttendanceSessionService.TimeoutSeconds)
+
+	applyStringEnv("INTERNAL_SERVICE_TOKEN", &cfg.InternalService.Token)
+	applyStringEnv("JWT_SECRET", &cfg.JWTSecret)
+}
+
+func applyStringEnv(key string, target *string) {
+	if value := os.Getenv(key); value != "" {
+		*target = value
+	}
+}
+
+func applyIntEnv(key string, target *int) {
+	value := os.Getenv(key)
+	if value == "" {
+		return
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err == nil {
+		*target = parsed
 	}
 }

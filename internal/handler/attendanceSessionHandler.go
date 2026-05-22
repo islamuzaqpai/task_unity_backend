@@ -2,162 +2,112 @@ package handler
 
 import (
 	"enactus/internal/apperrors"
-	"enactus/internal/helpers"
+	"enactus/internal/client"
 	"enactus/internal/httpx"
-	"enactus/internal/models/inputs"
-	"enactus/internal/service"
 	"errors"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-resty/resty/v2"
 )
 
 type AttendanceSessionHandler struct {
-	AttendanceSessionS *service.AttendanceSessionService
+	client *client.AttendanceSessionClient
 }
 
-func NewAttendanceSessionHandler(attendanceSessionS *service.AttendanceSessionService) *AttendanceSessionHandler {
-	return &AttendanceSessionHandler{AttendanceSessionS: attendanceSessionS}
+func NewAttendanceSessionHandler(attendanceSessionClient *client.AttendanceSessionClient) *AttendanceSessionHandler {
+	return &AttendanceSessionHandler{client: attendanceSessionClient}
 }
 
 func (h *AttendanceSessionHandler) CreateSession(c *gin.Context) error {
-	ctx := c.Request.Context()
-
-	var req inputs.CreateAttendanceSessionInput
-	if err := c.ShouldBindJSON(&req); err != nil {
-		return httpx.BadRequest("invalid request body")
-	}
-
-	v := helpers.NewValidator()
-	if errs := helpers.Validate(req, v); errs != nil {
-		return httpx.BadRequestValidation(errs)
-	}
-
-	currentUserId, role, err := getCurrentUserFromContext(c)
-	if err != nil {
-		return err
-	}
-
-	session, err := h.AttendanceSessionS.CreateSession(ctx, currentUserId, role, req)
-	if err != nil {
-		return mapAttendanceSessionError(err)
-	}
-
-	httpx.WriteJSON(c, 201, session)
-	return nil
+	return h.proxyWithBody(c, func(userID int, role string, body []byte) (int, []byte, string, error) {
+		resp, err := h.client.CreateSession(c.Request.Context(), userID, role, body)
+		return proxyResponse(resp, err)
+	})
 }
 
 func (h *AttendanceSessionHandler) GetSession(c *gin.Context) error {
-	ctx := c.Request.Context()
-
-	sessionId, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return httpx.BadRequest("invalid session id")
-	}
-
-	currentUserId, role, err := getCurrentUserFromContext(c)
-	if err != nil {
-		return err
-	}
-
-	session, err := h.AttendanceSessionS.GetSession(ctx, currentUserId, role, sessionId)
-	if err != nil {
-		return mapAttendanceSessionError(err)
-	}
-
-	httpx.WriteJSON(c, 200, session)
-	return nil
+	return h.proxyWithoutBody(c, func(userID int, role string) (int, []byte, string, error) {
+		resp, err := h.client.GetSession(c.Request.Context(), userID, role, c.Param("id"))
+		return proxyResponse(resp, err)
+	})
 }
 
 func (h *AttendanceSessionHandler) ListSessions(c *gin.Context) error {
-	ctx := c.Request.Context()
-
-	currentUserId, role, err := getCurrentUserFromContext(c)
-	if err != nil {
-		return err
-	}
-
-	var departmentId *int
-	if departmentIdStr := c.Query("department_id"); departmentIdStr != "" {
-		parsed, parseErr := strconv.Atoi(departmentIdStr)
-		if parseErr != nil {
-			return httpx.BadRequest("invalid department_id")
-		}
-		departmentId = &parsed
-	}
-
-	var dateFrom *string
-	if value := c.Query("date_from"); value != "" {
-		dateFrom = &value
-	}
-	var dateTo *string
-	if value := c.Query("date_to"); value != "" {
-		dateTo = &value
-	}
-
-	sessions, err := h.AttendanceSessionS.ListSessions(ctx, currentUserId, role, departmentId, dateFrom, dateTo)
-	if err != nil {
-		return mapAttendanceSessionError(err)
-	}
-
-	httpx.WriteJSON(c, 200, sessions)
-	return nil
+	return h.proxyWithoutBody(c, func(userID int, role string) (int, []byte, string, error) {
+		resp, err := h.client.ListSessions(c.Request.Context(), userID, role, c.Request.URL.Query())
+		return proxyResponse(resp, err)
+	})
 }
 
 func (h *AttendanceSessionHandler) BulkUpsertEntries(c *gin.Context) error {
-	ctx := c.Request.Context()
-
-	sessionId, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return httpx.BadRequest("invalid session id")
-	}
-
-	var req inputs.BulkUpsertAttendanceEntriesInput
-	if err := c.ShouldBindJSON(&req); err != nil {
-		return httpx.BadRequest("invalid request body")
-	}
-	if len(req.Entries) == 0 {
-		return httpx.BadRequest("entries are required")
-	}
-
-	v := helpers.NewValidator()
-	if errs := helpers.Validate(req.Entries, v); errs != nil {
-		return httpx.BadRequestValidation(errs)
-	}
-
-	currentUserId, role, err := getCurrentUserFromContext(c)
-	if err != nil {
-		return err
-	}
-
-	if err := h.AttendanceSessionS.BulkUpsertEntries(ctx, currentUserId, role, sessionId, req); err != nil {
-		return mapAttendanceSessionError(err)
-	}
-
-	c.Status(200)
-	return nil
+	return h.proxyWithBody(c, func(userID int, role string, body []byte) (int, []byte, string, error) {
+		resp, err := h.client.BulkUpsertEntries(c.Request.Context(), userID, role, c.Param("id"), body)
+		return proxyResponse(resp, err)
+	})
 }
 
 func (h *AttendanceSessionHandler) PublishSession(c *gin.Context) error {
-	ctx := c.Request.Context()
+	return h.proxyWithoutBody(c, func(userID int, role string) (int, []byte, string, error) {
+		resp, err := h.client.PublishSession(c.Request.Context(), userID, role, c.Param("id"))
+		return proxyResponse(resp, err)
+	})
+}
 
-	sessionId, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return httpx.BadRequest("invalid session id")
-	}
-
-	currentUserId, role, err := getCurrentUserFromContext(c)
+func (h *AttendanceSessionHandler) proxyWithBody(c *gin.Context, requestFn func(userID int, role string, body []byte) (int, []byte, string, error)) error {
+	userID, role, err := getCurrentUserFromContext(c)
 	if err != nil {
 		return err
 	}
 
-	if err := h.AttendanceSessionS.PublishSession(ctx, currentUserId, role, sessionId); err != nil {
-		return mapAttendanceSessionError(err)
+	body, err := c.GetRawData()
+	if err != nil {
+		return httpx.BadRequest("failed to read request body")
 	}
 
-	c.Status(200)
+	status, responseBody, contentType, err := requestFn(userID, role, body)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	writeProxyResponse(c, status, responseBody, contentType)
 	return nil
+}
+
+func (h *AttendanceSessionHandler) proxyWithoutBody(c *gin.Context, requestFn func(userID int, role string) (int, []byte, string, error)) error {
+	userID, role, err := getCurrentUserFromContext(c)
+	if err != nil {
+		return err
+	}
+
+	status, responseBody, contentType, err := requestFn(userID, role)
+	if err != nil {
+		return httpx.InternalError(err)
+	}
+
+	writeProxyResponse(c, status, responseBody, contentType)
+	return nil
+}
+
+func writeProxyResponse(c *gin.Context, status int, body []byte, contentType string) {
+	if contentType == "" {
+		contentType = "application/json"
+	}
+	if len(body) == 0 {
+		c.Status(status)
+		return
+	}
+	c.Data(status, contentType, body)
+}
+
+func proxyResponse(resp *resty.Response, err error) (int, []byte, string, error) {
+	if err != nil {
+		return 0, nil, "", client.ProxyError(err)
+	}
+
+	contentType := resp.Header().Get("Content-Type")
+
+	return resp.StatusCode(), resp.Body(), contentType, nil
 }
 
 func getCurrentUserFromContext(c *gin.Context) (int, string, error) {
@@ -166,7 +116,7 @@ func getCurrentUserFromContext(c *gin.Context) (int, string, error) {
 		return 0, "", httpx.BadRequest("invalid user id")
 	}
 
-	userId, ok := userIDValue.(int)
+	userID, ok := userIDValue.(int)
 	if !ok {
 		return 0, "", httpx.BadRequest("invalid user id")
 	}
@@ -186,7 +136,7 @@ func getCurrentUserFromContext(c *gin.Context) (int, string, error) {
 		return 0, "", httpx.Unauthorized("role missing")
 	}
 
-	return userId, role, nil
+	return userID, role, nil
 }
 
 func mapAttendanceSessionError(err error) error {

@@ -2,6 +2,7 @@ package app
 
 import (
 	"enactus/internal/auth"
+	"enactus/internal/client"
 	"enactus/internal/config"
 	"enactus/internal/database"
 	"enactus/internal/handler"
@@ -56,9 +57,14 @@ func Run() {
 	attendanceS := service.NewAttendanceService(attendanceR, userS)
 	attendanceH := handler.NewAttendanceHandler(attendanceS)
 
-	attendanceSessionR := repository.NewAttendanceSessionRepository(pool)
-	attendanceSessionS := service.NewAttendanceSessionService(attendanceSessionR, userR, departmentR)
-	attendanceSessionH := handler.NewAttendanceSessionHandler(attendanceSessionS)
+	attendanceSessionClient := client.NewAttendanceSessionClient(
+		cfg.AttendanceSessionService.BaseURL,
+		cfg.InternalService.Token,
+		cfg.AttendanceSessionService.TimeoutSeconds,
+	)
+	attendanceSessionH := handler.NewAttendanceSessionHandler(attendanceSessionClient)
+
+	internalDataH := handler.NewInternalDataHandler(userR, departmentR)
 
 	commentR := repository.NewCommentRepository(pool)
 	commentS := service.NewCommentService(commentR, taskS)
@@ -73,6 +79,8 @@ func Run() {
 	routes.AttendanceRoutes(attendanceH, router, &jwtSecret)
 	routes.AttendanceSessionRoutes(attendanceSessionH, router, &jwtSecret)
 	routes.CommentRoutes(commentH, router, &jwtSecret)
+	routes.InternalServiceRoutes(internalDataH, router, cfg.InternalService.Token)
 
-	log.Fatal(router.Run(":8080"))
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	log.Fatal(router.Run(addr))
 }

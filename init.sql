@@ -79,28 +79,3 @@ create table attendance (
                             deleted_at timestamp
 );
 
-create table attendance_sessions (
-                                     id serial primary key,
-                                     department_id int not null references departments(id) on delete cascade,
-                                     date date not null,
-                                     state text not null default 'draft'
-                                         check (state in ('draft', 'published')),
-                                     created_by int references users(id) on delete set null,
-                                     updated_by int references users(id) on delete set null,
-                                     created_at timestamp default now(),
-                                     updated_at timestamp default now(),
-                                     deleted_at timestamp
-);
-
-create table attendance_entries (
-                                    id serial primary key,
-                                    session_id int not null references attendance_sessions(id) on delete cascade,
-                                    student_id int not null references users(id) on delete cascade,
-                                    status text not null
-                                        check (status in ('present', 'absent', 'late', 'excused')),
-                                    comment text,
-                                    marked_by int references users(id) on delete set null,
-                                    created_at timestamp default now(),
-                                    updated_at timestamp default now(),
-                                    deleted_at timestamp
-);

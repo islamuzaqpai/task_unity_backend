@@ -14,6 +14,7 @@ import (
 
 type UserRepositoryInterface interface {
 	GetUserById(ctx context.Context, id int) (*models.User, error)
+	GetUsersByDepartmentId(ctx context.Context, departmentId int) ([]models.User, error)
 	GetAuthUserByEmail(ctx context.Context, email string) (*inputs.AuthUser, string, error)
 	EmailExists(ctx context.Context, email *string) (bool, error)
 	GetAllUsers(ctx context.Context) ([]models.User, error)
@@ -56,6 +57,21 @@ func (userRepo *UserRepository) GetAllUsers(ctx context.Context) ([]models.User,
 		Find(&users).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch users: %w", err)
+	}
+
+	return users, nil
+}
+
+func (userRepo *UserRepository) GetUsersByDepartmentId(ctx context.Context, departmentId int) ([]models.User, error) {
+	var users []models.User
+	err := userRepo.DB.WithContext(ctx).
+		Table("users").
+		Select("id", "full_name", "email", "department_id", "created_at", "updated_at", "deleted_at").
+		Where("department_id = ? AND deleted_at IS NULL", departmentId).
+		Order("full_name ASC").
+		Find(&users).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users by department: %w", err)
 	}
 
 	return users, nil
